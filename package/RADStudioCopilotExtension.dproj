@@ -10,7 +10,7 @@
         <FrameworkType>VCL</FrameworkType>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>1</TargetedPlatforms>
-        <ProjectName Condition="'$(ProjectName)'==''">RADStudioCopilotExtension</ProjectName>
+        <ProjectName Condition="'$(ProjectName)'==''">Copilot Extension for RAD Studio by harrybin</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -55,9 +55,9 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <SanitizedProjectName>RADStudioCopilotExtension</SanitizedProjectName>
         <DCC_ImageBase>00400000</DCC_ImageBase>
-        <DCC_Description>RAD Studio Copilot Extension - GitHub Copilot Integration</DCC_Description>
+        <DCC_Description>Copilot Extension for RAD Studio by harrybin</DCC_Description>
         <DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
-        <DCC_UnitSearchPath>src;src\toolsapi;src\copilot-bridge;src\ui;src\services;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>src;src\toolsapi;src\copilot-bridge;src\ui;src\services;C:\Program Files (x86)\Embarcadero\Studio\23.0\lib\Win32\release;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_UnitAlias>WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;$(DCC_UnitAlias)</DCC_UnitAlias>
         <DCC_K>false</DCC_K>
         <DCC_N>true</DCC_N>
@@ -160,15 +160,15 @@
                 </VersionInfo>
                 <VersionInfoKeys>
                     <VersionInfoKeys Name="CompanyName"/>
-                    <VersionInfoKeys Name="FileDescription">RAD Studio Copilot Extension</VersionInfoKeys>
+                    <VersionInfoKeys Name="FileDescription">Copilot Extension for RAD Studio by harrybin</VersionInfoKeys>
                     <VersionInfoKeys Name="FileVersion">1.0.0.0</VersionInfoKeys>
                     <VersionInfoKeys Name="InternalName">RADStudioCopilotExtension</VersionInfoKeys>
                     <VersionInfoKeys Name="LegalCopyright"/>
                     <VersionInfoKeys Name="LegalTrademarks"/>
                     <VersionInfoKeys Name="OriginalFilename">RADStudioCopilotExtension.bpl</VersionInfoKeys>
-                    <VersionInfoKeys Name="ProductName">RAD Studio Copilot Extension</VersionInfoKeys>
+                    <VersionInfoKeys Name="ProductName">Copilot Extension for RAD Studio by harrybin</VersionInfoKeys>
                     <VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
-                    <VersionInfoKeys Name="Comments">GitHub Copilot Integration for RAD Studio</VersionInfoKeys>
+                    <VersionInfoKeys Name="Comments">GitHub Copilot Integration for RAD Studio by harrybin</VersionInfoKeys>
                 </VersionInfoKeys>
                 <Excluded_Packages>
                     <Excluded_Packages Name="$(BDSBIN)\dcloffice2k290.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>

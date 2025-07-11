@@ -23,7 +23,7 @@ package RADStudioCopilotExtension;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$R *.res}
-{$DESCRIPTION 'RAD Studio Copilot Extension - GitHub Copilot Integration'}
+{$DESCRIPTION 'Copilot Extension for RAD Studio by harrybin'}
 {$IMPLICITBUILD OFF}
 
 requires

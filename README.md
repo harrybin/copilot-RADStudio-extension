@@ -1,4 +1,4 @@
-# RAD Studio Copilot Extension
+# Copilot Extension for RAD Studio by harrybin
 
 A RAD Studio IDE extension that integrates GitHub Copilot's conversational AI assistance directly into the RAD Studio IDE environment using the IDE Tools API.
 

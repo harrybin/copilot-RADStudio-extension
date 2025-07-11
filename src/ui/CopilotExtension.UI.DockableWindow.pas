@@ -51,14 +51,15 @@ implementation
 
 constructor TCopilotDockableWindow.Create(AOwner: TComponent);
 begin
-  inherited Create(AOwner);
+  inherited CreateNew(AOwner); // Use CreateNew to avoid loading form resource
   
   // Set up the form properties
   Caption := 'GitHub Copilot Chat';
   Width := 400;
   Height := 600;
   BorderStyle := bsSizeToolWin;
-  FormStyle := fsStayOnTop;
+  FormStyle := fsNormal; // Changed from fsStayOnTop to fsNormal
+  Position := poScreenCenter;
   
   // Create the chat panel
   FChatPanel := TCopilotChatPanel.Create(Self);

@@ -1,0 +1,84 @@
+# RAD Studio / Delphi / C++Builder specific files
+*.dcu
+*.dcuil
+*.exe
+*.dll
+*.bpl
+*.dcp
+*.so
+*.apk
+*.drc
+*.map
+*.dres
+*.rsm
+*.tds
+*.dsk
+*.ddp
+*.deployproj
+*.local
+*.identcache
+*.projdata
+*.tvsconfig
+*.otares
+*.2007
+*.cbproj.local
+*.cbproj.FileVersion.tvsconfig
+
+# RAD Studio project files that should be ignored
+__history/
+__recovery/
+*.stat
+
+# Build outputs
+Win32/
+Win64/
+OSX32/
+OSX64/
+iOSDevice64/
+iOSSimulator/
+Android/
+Android64/
+Linux64/
+
+# Package build outputs
+*.bpi
+*.lib
+*.a
+*.o
+*.ocx
+
+# Node.js (for VS Code bridge components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# VS Code specific
+.vscode/
+*.code-workspace
+
+# Temporary files
+*.tmp
+*.temp
+*.~*
+~*
+
+# Log files
+*.log
+
+# IDE specific files
+*.desktop
+
+# Documentation build outputs
+docs/_build/
+
+# Test outputs
+test-results/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/output/
+*.pdb

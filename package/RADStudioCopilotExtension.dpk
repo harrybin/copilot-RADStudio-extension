@@ -1,0 +1,42 @@
+package RADStudioCopilotExtension;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'RAD Studio Copilot Extension - GitHub Copilot Integration'}
+{$DESIGNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  vcl,
+  vclx,
+  designide;
+
+contains
+  CopilotExtension.Registration in '..\src\CopilotExtension.Registration.pas',
+  CopilotExtension.ToolsAPI.Interfaces in '..\src\toolsapi\CopilotExtension.ToolsAPI.Interfaces.pas',
+  CopilotBridgeIntf in '..\src\copilot-bridge\CopilotBridgeIntf.pas';
+
+end.

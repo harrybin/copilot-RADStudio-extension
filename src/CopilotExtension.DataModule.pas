@@ -13,7 +13,7 @@ uses
   SysUtils, Classes, ToolsAPI,
   CopilotExtension.Services.Core,
   CopilotExtension.Services.Authentication,
-  CopilotExtension.ToolsAPI.Implementation;
+  CopilotExtension.IToolsAPIImpl;
 
 type
   TCopilotExtensionDM = class(TDataModule)

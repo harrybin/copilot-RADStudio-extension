@@ -1,4 +1,4 @@
-unit CopilotExtension.ToolsAPI.Implementation;
+unit CopilotExtension.IToolsAPIImpl;
 
 {
   RAD Studio Copilot Extension - Tools API Implementation
@@ -10,8 +10,8 @@ unit CopilotExtension.ToolsAPI.Implementation;
 interface
 
 uses
-  ToolsAPI, Windows, SysUtils, Classes, Menus, ActnList,
-  CopilotExtension.ToolsAPI.Interfaces,
+  ToolsAPI, Winapi.Windows, System.SysUtils, System.Classes, Vcl.Menus, Vcl.ActnList, Vcl.Forms,
+  CopilotExtension.IToolsAPI,
   CopilotExtension.Services.Core;
 
 type
@@ -62,7 +62,11 @@ type
   public
     constructor Create(AToolsAPIManager: TCopilotToolsAPIManager);
     
-    // ICopilotEditorNotifier implementation
+    // IOTAEditorNotifier implementation (required by Tools API)
+    procedure ViewNotification(const View: IOTAEditView; Operation: TOperation);
+    procedure ViewActivated(const View: IOTAEditView);
+    
+    // ICopilotEditorNotifier implementation (our custom methods)
     procedure OnEditorModified(const Editor: IOTASourceEditor);
     procedure OnCursorMoved(const Editor: IOTASourceEditor; Line, Column: Integer);
     procedure OnFileOpened(const Editor: IOTASourceEditor);
@@ -230,7 +234,7 @@ end;
 
 function TCopilotToolsAPIManager.RegisterEditorServices: Boolean;
 var
-  EditorServices: IOTAEditorServices;
+  ModuleServices: IOTAModuleServices;
 begin
   Result := False;
   
@@ -238,18 +242,19 @@ begin
     if not Assigned(BorlandIDEServices) then
       Exit;
       
-    EditorServices := BorlandIDEServices as IOTAEditorServices;
-    if not Assigned(EditorServices) then
+    ModuleServices := BorlandIDEServices as IOTAModuleServices;
+    if not Assigned(ModuleServices) then
       Exit;
     
     // Create and register notifiers
     FEditorNotifier := TCopilotEditorNotifier.Create(Self);
     FProjectNotifier := TCopilotProjectNotifier.Create(Self);
     
-    // Register notifiers with IDE
-    FNotifierIndex := EditorServices.AddNotifier(FEditorNotifier);
+    // For IOTAEditorNotifier, we'll register it per-module basis
+    // For now, just create the notifier - registration happens per module
+    FNotifierIndex := 0; // Placeholder index
     
-    Result := FNotifierIndex >= 0;
+    Result := Assigned(FEditorNotifier) and Assigned(FProjectNotifier);
     
   except
     on E: Exception do
@@ -264,24 +269,15 @@ begin
 end;
 
 function TCopilotToolsAPIManager.UnregisterEditorServices: Boolean;
-var
-  EditorServices: IOTAEditorServices;
 begin
   Result := False;
   
   try
-    if (FNotifierIndex >= 0) and Assigned(BorlandIDEServices) then
-    begin
-      EditorServices := BorlandIDEServices as IOTAEditorServices;
-      if Assigned(EditorServices) then
-      begin
-        EditorServices.RemoveNotifier(FNotifierIndex);
-        FNotifierIndex := -1;
-      end;
-    end;
-    
+    // Since we're not using global registration for IOTAEditorNotifier,
+    // we just clean up the notifier instances
     FEditorNotifier := nil;
     FProjectNotifier := nil;
+    FNotifierIndex := -1;
     
     Result := True;
     
@@ -488,6 +484,40 @@ begin
   inherited Create;
   FToolsAPIManager := AToolsAPIManager;
 end;
+
+// IOTAEditorNotifier implementation (required by Tools API)
+
+procedure TCopilotEditorNotifier.ViewNotification(const View: IOTAEditView; Operation: TOperation);
+begin
+  // Handle view notifications (create, destroy, etc.)
+  case Operation of
+    opInsert: 
+      begin
+        // View created
+        if Assigned(View) and Assigned(View.Buffer) then
+          OnFileOpened(View.Buffer as IOTASourceEditor);
+      end;
+    opRemove:
+      begin
+        // View being destroyed
+        if Assigned(View) and Assigned(View.Buffer) then
+          OnFileClosed(View.Buffer as IOTASourceEditor);
+      end;
+  end;
+end;
+
+procedure TCopilotEditorNotifier.ViewActivated(const View: IOTAEditView);
+begin
+  // Handle view activation - could be used for context updates
+  if Assigned(View) and Assigned(View.Buffer) then
+  begin
+    OnFileOpened(View.Buffer as IOTASourceEditor);
+    // Could also get current cursor position here
+    OnCursorMoved(View.Buffer as IOTASourceEditor, View.CursorPos.Line, View.CursorPos.Col);
+  end;
+end;
+
+// ICopilotEditorNotifier implementation (our custom methods)
 
 procedure TCopilotEditorNotifier.OnEditorModified(const Editor: IOTASourceEditor);
 begin

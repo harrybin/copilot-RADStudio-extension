@@ -13,7 +13,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, 
   System.Classes, Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs,
   Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.Buttons, Vcl.Menus,
-  CopilotExtension.Bridge.Interface, CopilotExtension.Services.Core;
+  CopilotExtension.IBridge, CopilotExtension.Services.Core;
 
 type
   TCopilotChatPanel = class(TFrame, ICopilotBridgeCallback)
@@ -94,7 +94,7 @@ implementation
 {$R *.dfm}
 
 uses
-  ToolsAPI, CopilotExtension.Bridge.Implementation, CopilotExtension.ToolsAPI.Implementation;
+  ToolsAPI, CopilotExtension.IBridgeImpl, CopilotExtension.IToolsAPIImpl, CopilotExtension.IToolsAPI;
 
 { TCopilotChatPanel }
 
@@ -186,19 +186,20 @@ var
 begin
   Timestamp := FormatDateTime('hh:nn:ss', Now);
   
-  case LowerCase(Role) of
-    'user': Prefix := Format('[%s] You: ', [Timestamp]);
-    'assistant': Prefix := Format('[%s] Copilot: ', [Timestamp]);
-    'system': Prefix := Format('[%s] System: ', [Timestamp]);
+  if LowerCase(Role) = 'user' then
+    Prefix := Format('[%s] You: ', [Timestamp])
+  else if LowerCase(Role) = 'assistant' then
+    Prefix := Format('[%s] Copilot: ', [Timestamp])
+  else if LowerCase(Role) = 'system' then
+    Prefix := Format('[%s] System: ', [Timestamp])
   else
     Prefix := Format('[%s] %s: ', [Timestamp, Role]);
-  end;
   
   memChatHistory.Lines.Add(Prefix + Message);
   memChatHistory.Lines.Add(''); // Add blank line for readability
   
   // Scroll to bottom
-  SendMessage(memChatHistory.Handle, WM_VSCROLL, SB_BOTTOM, 0);
+  Winapi.Windows.SendMessage(memChatHistory.Handle, WM_VSCROLL, SB_BOTTOM, 0);
 end;
 
 procedure TCopilotChatPanel.SetProcessingState(Processing: Boolean);

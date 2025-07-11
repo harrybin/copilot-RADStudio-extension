@@ -1,4 +1,4 @@
-unit CopilotExtension.ToolsAPI.Interfaces;
+unit CopilotExtension.IToolsAPI;
 
 {
   RAD Studio Copilot Extension - Tools API Interface Definitions
@@ -39,7 +39,7 @@ type
   end;
 
   // Editor notifier interface for code context
-  ICopilotEditorNotifier = interface(IOTANotifier)
+  ICopilotEditorNotifier = interface(IOTAEditorNotifier)
     ['{DAE9F2E3-4F6C-5F7D-BF5E-3CAE9F2E3456}']
     procedure OnEditorModified(const Editor: IOTASourceEditor);
     procedure OnCursorMoved(const Editor: IOTASourceEditor; Line, Column: Integer);

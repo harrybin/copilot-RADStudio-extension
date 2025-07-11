@@ -34,7 +34,7 @@ d:\harrybin\copilot-RADStudio-extension\
 │   │   ├── CopilotExtension.Services.Core.pas           # Core service
 │   │   └── CopilotExtension.Services.Authentication.pas # Authentication
 │   ├── toolsapi/                            # Tools API integration
-│   │   ├── CopilotExtension.ToolsAPI.Interfaces.pas     # API interfaces
+│   │   ├── CopilotExtension.IToolsAPI.pas              # API interfaces
 │   │   └── CopilotExtension.ToolsAPI.Implementation.pas # API implementation
 │   └── ui/                                  # User interface
 │       ├── CopilotExtension.UI.ChatPanel.pas    # Chat panel

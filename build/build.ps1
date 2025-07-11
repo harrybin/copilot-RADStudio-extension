@@ -140,9 +140,10 @@ function Build-Package {
     
     # Set up RAD Studio environment
     $TempBat = Join-Path $BuildDir "build_temp.bat"
+    
     $BuildScript = @"
 @echo off
-call "$MSBuildPath"
+call "C:\Program Files (x86)\Embarcadero\Studio\23.0\bin\rsvars.bat"
 cd /d "$PackageDir"
 dcc32 -B -Q RADStudioCopilotExtension.dpk
 if errorlevel 1 (

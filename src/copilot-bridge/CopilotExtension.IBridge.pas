@@ -1,4 +1,4 @@
-unit CopilotExtension.Bridge.Interface;
+unit CopilotExtension.IBridge;
 
 {
   RAD Studio Copilot Extension - Bridge Interface
@@ -10,11 +10,24 @@ unit CopilotExtension.Bridge.Interface;
 interface
 
 uses
-  System.Classes, System.SysUtils;
+  System.Classes, System.SysUtils, System.JSON, CopilotExtension.IToolsAPI;
 
 type
   // Response status enumeration
   TCopilotResponseStatus = (crsSuccess, crsError, crsPending, crsTimeout);
+
+  // Bridge event types
+  TCopilotBridgeEvent = (
+    cbeInitialized,
+    cbeFinalized,
+    cbeAuthenticated,
+    cbeSignedOut,
+    cbeError,
+    cbeStatusChanged
+  );
+
+  // Bridge event handler
+  TCopilotBridgeEventHandler = procedure(Event: TCopilotBridgeEvent; const Data: string) of object;
 
   // Chat message structure
   TCopilotChatMessage = record
@@ -31,16 +44,7 @@ type
     RequestId: string;
   end;
 
-  // Code context structure
-  TCopilotCodeContext = record
-    FileName: string;
-    Language: string;
-    ProjectName: string;
-    Line: Integer;
-    Column: Integer;
-    SelectedText: string;
-    SurroundingCode: string;
-  end;
+
 
   // Forward declarations
   ICopilotBridge = interface;
@@ -77,6 +81,10 @@ type
     function Authenticate: Boolean;
     function IsAuthenticated: Boolean;
     procedure SignOut;
+    
+    // Configuration
+    procedure SetConfiguration(const Config: TJSONObject);
+    function GetConfiguration: TJSONObject;
     
     // Status and error handling
     function GetStatus: string;

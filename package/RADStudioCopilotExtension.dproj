@@ -82,7 +82,7 @@
     <BT_BuildType>Debug</BT_BuildType>
     <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
     <VerInfo_Keys>CompanyName=;FileDescription=RAD Studio Copilot Extension;FileVersion=1.0.0.0;InternalName=RADStudioCopilotExtension;LegalCopyright=;LegalTrademarks=;OriginalFilename=RADStudioCopilotExtension.bpl;ProductName=RAD Studio Copilot Extension;ProductVersion=1.0.0.0;Comments=GitHub Copilot Integration for RAD Studio</VerInfo_Keys>
-    <VerInfo_Locale>1033</VerInfo_Keys>
+    <VerInfo_Locale>1033</VerInfo_Locale>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Cfg_1)'!=''">
     <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>

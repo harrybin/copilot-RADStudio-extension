@@ -113,3 +113,4 @@ This is a RAD Studio IDE extension that creates an adapter wrapper around the [V
 - VS Code Copilot Chat updates frequently - monitor compatibility
 - Consider enterprise authentication requirements for GitHub Copilot access
 - Implement graceful degradation when Copilot services unavailable
+- at the end of code creation build the package by using the vscode task "Build Extension"

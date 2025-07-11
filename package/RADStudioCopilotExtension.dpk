@@ -1,6 +1,5 @@
 package RADStudioCopilotExtension;
 
-{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
@@ -23,10 +22,9 @@ package RADStudioCopilotExtension;
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
-{$ENDIF IMPLICITBUILDING}
+{$R *.res}
 {$DESCRIPTION 'RAD Studio Copilot Extension - GitHub Copilot Integration'}
-{$DESIGNONLY}
-{$IMPLICITBUILD ON}
+{$IMPLICITBUILD OFF}
 
 requires
   rtl,

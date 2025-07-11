@@ -35,8 +35,12 @@ finalization
   // Package cleanup
   if Assigned(BorlandIDEServices) then
   begin
-    (BorlandIDEServices as IOTAMessageServices).AddTitleMessage(
-      'RAD Studio Copilot Extension unloaded');
+    try
+      (BorlandIDEServices as IOTAMessageServices).AddTitleMessage(
+        'RAD Studio Copilot Extension unloaded');
+    except
+      // Ignore errors if IDE services are already released
+    end;
   end;
 
 end.

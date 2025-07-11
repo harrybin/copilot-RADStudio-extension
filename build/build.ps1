@@ -157,7 +157,9 @@ if errorlevel 1 (
     $BuildScript | Out-File -FilePath $TempBat -Encoding ASCII
     
     # Execute build
+    Write-Host "Running build command: $TempBat"
     $BuildResult = & cmd.exe /c $TempBat
+    Write-Host $BuildResult
     $BuildExitCode = $LASTEXITCODE
     
     # Clean up temporary file

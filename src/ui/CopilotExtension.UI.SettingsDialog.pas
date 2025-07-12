@@ -35,7 +35,6 @@ begin
   FGithubToken := AGithubToken;
   edtGithubUsername.Text := FGithubUsername;
   edtGithubToken.Text := FGithubToken;
-  edtGithubToken.PasswordChar := '*';
 end;
 
 function TfrmCopilotSettings.GetGithubConfig: TJSONObject;

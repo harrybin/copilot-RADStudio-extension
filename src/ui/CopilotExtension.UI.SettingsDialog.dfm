@@ -2,73 +2,62 @@ object frmCopilotSettings: TfrmCopilotSettings
   Left = 0
   Top = 0
   BorderStyle = bsDialog
-  Caption = 'Copilot Settings'
-  ClientHeight = 180
-  ClientWidth = 340
+  Caption = 'GitHub Copilot Settings'
+  ClientHeight = 160
+  ClientWidth = 360
   Position = poScreenCenter
   Font.Name = 'Segoe UI'
   Font.Size = 10
   PixelsPerInch = 96
   TextHeight = 13
-  object lblApiEndpoint: TLabel
+  object lblGithubUsername: TLabel
     Left = 16
     Top = 16
-    Width = 80
+    Width = 95
     Height = 13
-    Caption = 'API Endpoint:'
+    Caption = 'GitHub Username:'
   end
-  object edtApiEndpoint: TEdit
+  object edtGithubUsername: TEdit
     Left = 120
     Top = 12
-    Width = 200
+    Width = 220
     Height = 21
     TabOrder = 0
   end
-  object lblTimeout: TLabel
+  object lblGithubToken: TLabel
     Left = 16
     Top = 52
-    Width = 90
+    Width = 85
     Height = 13
-    Caption = 'Request Timeout:'
+    Caption = 'GitHub Token:'
   end
-  object edtTimeout: TEdit
+  object edtGithubToken: TEdit
     Left = 120
     Top = 48
-    Width = 80
+    Width = 220
     Height = 21
     TabOrder = 1
-  end
-  object lblRetry: TLabel
-    Left = 16
-    Top = 88
-    Width = 90
-    Height = 13
-    Caption = 'Retry Attempts:'
-  end
-  object edtRetry: TEdit
-    Left = 120
-    Top = 84
-    Width = 80
-    Height = 21
-    TabOrder = 2
+    PasswordChar = '*'
   end
   object btnOK: TButton
-    Left = 120
-    Top = 128
+    Left = 160
+    Top = 100
     Width = 80
     Height = 25
     Caption = 'OK'
-    TabOrder = 3
+    Default = True
+    TabOrder = 2
     OnClick = btnOKClick
     ModalResult = 1
   end
   object btnCancel: TButton
-    Left = 240
-    Top = 128
+    Left = 260
+    Top = 100
     Width = 80
     Height = 25
     Caption = 'Cancel'
-    TabOrder = 4
+    Cancel = True
+    TabOrder = 3
     OnClick = btnCancelClick
     ModalResult = 2
   end

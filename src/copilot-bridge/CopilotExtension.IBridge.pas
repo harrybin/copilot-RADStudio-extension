@@ -42,6 +42,7 @@ type
     Content: string;
     ErrorMessage: string;
     RequestId: string;
+    TokensUsed: Integer;
   end;
 
 

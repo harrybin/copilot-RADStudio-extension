@@ -13,7 +13,8 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, 
   System.Classes, Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs,
   Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.Buttons, Vcl.Menus,
-  CopilotExtension.IBridge, CopilotExtension.Services.Core;
+  CopilotExtension.IBridge,
+  CopilotExtension.Services.Core;
 
 type
   TCopilotChatPanel = class(TFrame, ICopilotBridgeCallback)
@@ -94,7 +95,8 @@ implementation
 {$R *.dfm}
 
 uses
-  ToolsAPI, CopilotExtension.IBridgeImpl, CopilotExtension.IToolsAPIImpl, CopilotExtension.IToolsAPI;
+  ToolsAPI, CopilotExtension.IToolsAPIImpl, CopilotExtension.IToolsAPI,
+  CopilotExtension.IBridgeImpl;
 
 { TCopilotChatPanel }
 

@@ -14,13 +14,19 @@ This is a RAD Studio IDE extension that creates an adapter wrapper around the [V
 - **Tools API Location**: Interface declarations found at `C:\Program Files (x86)\Embarcadero\Studio\23.0\source\ToolsAPI`
   - **Tools API** documentation: when needed fetch them here [Tools API Documentation](https://docwiki.embarcadero.com/Libraries/Athens/de/ToolsAPI)
 
-### VS Code Copilot Chat Adapter
+## VS Code Copilot Chat Adapter
 
 - **Target Integration**: Wrap VS Code Copilot Chat TypeScript/JavaScript functionality
+  - find the original source code here [VS Code Copilot Chat](https://github.com/microsoft/vscode-copilot-chat)
 - **Communication Bridge**: Create interface layer between RAD Studio's Pascal/Delphi environment and Node.js-based Copilot Chat
 - **UI Integration**: Implement chat interface within RAD Studio IDE using Tools API UI services
 
 ## Development Conventions
+
+- You are developing a RAD Studio IDE extension for RAD studio Athen or newer
+- Use Pascal/Delphi filename conventions and class naming conventions
+- Follow RAD Studio's VCL component design patterns for UI components
+- find default [unit documentation here](https://docwiki.embarcadero.com/Libraries/Athens/en/Unit_List)
 
 ### Tools API Best Practices
 
@@ -28,6 +34,7 @@ This is a RAD Studio IDE extension that creates an adapter wrapper around the [V
 - **Handle Declarations**: Use `THandle` type instead of `Integer` for Windows handles
 - **Windows API**: Use proper `LPARAM`/`WPARAM` types for `SendMessage` calls
 - **Interface Categories**: Distinguish between OTA (version-independent) and NTA (version-specific) interfaces
+- take care of type compatibility when using Tools API interfaces
 
 ### IDE Integration Patterns
 
@@ -46,14 +53,6 @@ This is a RAD Studio IDE extension that creates an adapter wrapper around the [V
 ### Building & Installation
 
 1. Compile package using RAD Studio IDE
-2. Install package via Component > Install Packages
-3. Package registration happens automatically through Tools API initialization
-
-### Testing & Debugging
-
-- Use RAD Studio's integrated debugger for Pascal/Delphi code
-- Handle cross-process communication debugging for Node.js components
-- Test large memory address scenarios (>4GB memory usage)
 
 ### VS Code Integration Testing
 

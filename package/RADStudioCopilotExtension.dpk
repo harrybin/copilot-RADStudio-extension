@@ -41,7 +41,6 @@ contains
   CopilotExtension.IBridgeImpl in '..\src\copilot-bridge\CopilotExtension.IBridgeImpl.pas',
   CopilotExtension.UI.ChatPanel in '..\src\ui\CopilotExtension.UI.ChatPanel.pas' {TCopilotChatPanel: TFrame},
   CopilotExtension.UI.DockableWindow in '..\src\ui\CopilotExtension.UI.DockableWindow.pas',
-  CopilotExtension.Services.Core in '..\src\services\CopilotExtension.Services.Core.pas',
-  CopilotExtension.Services.Authentication in '..\src\services\CopilotExtension.Services.Authentication.pas';
+  CopilotExtension.Services.Core in '..\src\services\CopilotExtension.Services.Core.pas';
 
 end.

@@ -12,7 +12,7 @@ interface
 uses
   System.SysUtils, System.Classes, Vcl.Controls, Vcl.Forms, ToolsAPI,
   Vcl.ActnList, Vcl.ImgList, Vcl.Menus, Vcl.ComCtrls, System.IniFiles,
-  CopilotExtension.UI.ChatPanel;
+  CopilotExtension.UI.ChatPanel, CopilotExtension.Services.Core;
 
 type
   // Type aliases for missing ToolsAPI types
@@ -43,6 +43,7 @@ type
     function GetIdentifier: string;
     procedure ShowWindow;
     procedure HideWindow;
+    procedure SetCoreService(const CoreService: TCopilotCoreService);
   end;
 
 implementation
@@ -114,6 +115,12 @@ procedure TCopilotDockableForm.HideWindow;
 begin
   if Assigned(FForm) then
     FForm.Hide;
+end;
+
+procedure TCopilotDockableForm.SetCoreService(const CoreService: TCopilotCoreService);
+begin
+  if Assigned(FChatPanel) then
+    FChatPanel.SetCoreService(CoreService);
 end;
 
 end.

@@ -1,4 +1,7 @@
-unit CopilotExtension.DataModule;
+unit Copilouses
+  System.SysUtils, System.Classes, ToolsAPI,
+  CopilotExtension.Services.Core,
+  CopilotExtension.IToolsAPIImpl;nsion.DataModule;
 
 {
   RAD Studio Copilot Extension - Main Data Module
@@ -10,7 +13,7 @@ unit CopilotExtension.DataModule;
 interface
 
 uses
-  SysUtils, Classes, ToolsAPI,
+  System.SysUtils, System.Classes, ToolsAPI,
   CopilotExtension.Services.Core,
   CopilotExtension.Services.Authentication,
   CopilotExtension.IToolsAPIImpl;
@@ -19,7 +22,6 @@ type
   TCopilotExtensionDM = class(TDataModule)
   private
     FCoreService: TCopilotCoreService;
-    FAuthService: TCopilotAuthenticationService;
     FToolsAPIManager: TCopilotToolsAPIManager;
     FServicesRegistered: Boolean;
     
@@ -33,7 +35,6 @@ type
     procedure UnregisterIDEServices;
     
     property CoreService: TCopilotCoreService read FCoreService;
-    property AuthService: TCopilotAuthenticationService read FAuthService;
     property ToolsAPIManager: TCopilotToolsAPIManager read FToolsAPIManager;
   end;
 

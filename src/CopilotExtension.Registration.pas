@@ -11,7 +11,7 @@ interface
 uses
   System.SysUtils, ToolsAPI, Vcl.Menus, Vcl.Dialogs, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Controls,
   System.Threading, System.Classes, Winapi.Windows, Winapi.Messages,
-  CopilotExtension.UI.DockableWindow;
+  CopilotExtension.UI.DockableWindow, CopilotExtension.Services.Core;
 
 procedure Register;
 
@@ -44,6 +44,7 @@ var
   CopilotMenuItem: TMenuItem = nil;
   CopilotMenuHandler: TObject = nil;
   CopilotDockableForm: TCopilotDockableForm = nil;
+  CopilotCoreService: TCopilotCoreService = nil;
 
 // Local class for menu click handler
 type
@@ -57,12 +58,22 @@ var
   StandaloneWindow: TCopilotDockableWindow;
 begin
   try
+    // Ensure we have a Core service instance
+    if not Assigned(CopilotCoreService) then
+    begin
+      CopilotCoreService := TCopilotCoreService.Create;
+      CopilotCoreService.Initialize;
+    end;
+    
     // Since we simplified the dockable form, let's just use standalone window for now
     if not Assigned(CopilotDockableForm) then
     begin
       try
         // Create the dockable form manager
         CopilotDockableForm := TCopilotDockableForm.Create;
+        
+        // Inject the Core service
+        CopilotDockableForm.SetCoreService(CopilotCoreService);
         
         // Show the window
         CopilotDockableForm.ShowWindow;
@@ -131,6 +142,11 @@ initialization
 finalization
   if Assigned(CopilotDockableForm) then
     CopilotDockableForm.Free;
+  if Assigned(CopilotCoreService) then
+  begin
+    CopilotCoreService.Finalize;
+    CopilotCoreService.Free;
+  end;
   if Assigned(CopilotMenuItem) then
     CopilotMenuItem.Free;
   if Assigned(CopilotMenuHandler) then

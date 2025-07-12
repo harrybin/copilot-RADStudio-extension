@@ -1,10 +1,7 @@
 unit CopilotExtension.Services.Core;
 
 {
-  RAD Studio Copilot Extension - Core Serviimplementation
-
-uses
-  System.IOUtils, CopilotExtension.IBridgeImpl;mplementation
+  RAD Studio Copilot Extension - Core Service Implementation
   
   This unit provides the core service layer that coordinates between the
   Tools API, Copilot Bridge, and UI components.
@@ -42,7 +39,7 @@ type
     FInitialized: Boolean;
     FEventHandlers: TList;
     FLastError: string;
-    FAuthenticationService: TCopilotAuthenticationService;
+    // FAuthenticationService: TCopilotAuthenticationService; // TODO: Re-enable when circular dependency resolved
     // Internal methods
     procedure NotifyEvent(Event: TCopilotServiceEvent; const Data: string);
     procedure LoadConfiguration;
@@ -95,7 +92,7 @@ begin
   FConfiguration := TJSONObject.Create;
   FEventHandlers := TList.Create;
   FLastError := '';
-  FAuthenticationService := TCopilotAuthenticationService.Create;
+  // FAuthenticationService := TCopilotAuthenticationService.Create; // TODO: Re-enable when circular dependency resolved
 end;
 
 destructor TCopilotCoreService.Destroy;
@@ -123,6 +120,11 @@ begin
   try
     // Load configuration
     LoadConfiguration;
+
+    // Authenticate using config values
+    // TODO: Re-enable when authentication service circular dependency is resolved
+    // if (FConfiguration.GetValue('token') <> nil) then
+    //   FAuthenticationService.Authenticate(FConfiguration.GetValue('token').Value);
     
     // Create and initialize bridge - TODO: Implement bridge integration
     // BridgeFactory := TCopilotBridgeFactory.Create;
@@ -268,14 +270,15 @@ begin
   if Assigned(FBridge) then
   begin
     Result := FBridge.GetStatus;
+    // TODO: Re-enable authentication status when circular dependency resolved
     // Add authentication status
-    if Assigned(FAuthenticationService) then
-    begin
-      if FAuthenticationService.IsAuthenticated then
-        Result := Result + ' - Authenticated'
-      else
-        Result := Result + ' - Not authenticated';
-    end;
+    // if Assigned(FAuthenticationService) then
+    // begin
+    //   if FAuthenticationService.IsAuthenticated then
+    //     Result := Result + ' - Authenticated'
+    //   else
+    //     Result := Result + ' - Not authenticated';
+    // end;
   end
   else
   begin
@@ -325,15 +328,16 @@ begin
       Result.AddPair('bridge_available', TJSONBool.Create(False));
     end;
     
-    if Assigned(FAuthenticationService) then
-    begin
-      Result.AddPair('auth_service_available', TJSONBool.Create(True));
-      Result.AddPair('authenticated', TJSONBool.Create(FAuthenticationService.IsAuthenticated));
-    end
-    else
-    begin
-      Result.AddPair('auth_service_available', TJSONBool.Create(False));
-    end;
+    // TODO: Re-enable authentication service info when circular dependency resolved
+    // if Assigned(FAuthenticationService) then
+    // begin
+    //   Result.AddPair('auth_service_available', TJSONBool.Create(True));
+    //   Result.AddPair('authenticated', TJSONBool.Create(FAuthenticationService.IsAuthenticated));
+    // end
+    // else
+    // begin
+    //   Result.AddPair('auth_service_available', TJSONBool.Create(False));
+    // end;
     
     var LastError := GetLastError;
     if LastError <> '' then

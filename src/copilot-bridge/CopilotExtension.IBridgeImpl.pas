@@ -17,6 +17,15 @@ uses
   CopilotExtension.IBridge, CopilotExtension.IToolsAPI;
 
 type
+  // Logging levels
+  TLogLevel = (llDebug, llInfo, llWarning, llError);
+  
+  // Interface for logging callback
+  ICopilotLogger = interface
+    ['{B8E5F7A1-2D4C-4F5E-8A9B-1C2D3E4F5A6B}']
+    procedure Log(const Level: TLogLevel; const Msg: string);
+  end;
+
   // Simple authentication service stub for compilation
   TCopilotAuthenticationService = class
   public
@@ -99,17 +108,66 @@ type
     function CreateBridge: ICopilotBridge;
   end;
 
+// Global logger setter procedure - use this to set up logging from UI
+procedure SetGlobalLogger(const Logger: ICopilotLogger);
+
 implementation
 
 uses
   System.RegularExpressions, System.StrUtils, System.NetEncoding,
-  CopilotExtension.UI.SettingsDialog, Vcl.Forms;
+  CopilotExtension.UI.SettingsDialog, Vcl.Forms, Vcl.Dialogs;
 
 const
   GITHUB_COPILOT_API_ENDPOINT = 'https://api.githubcopilot.com/chat/completions';
   DEFAULT_REQUEST_TIMEOUT = 30000; // 30 seconds
   DEFAULT_RETRY_ATTEMPTS = 3;
   CONFIG_FILE_NAME = 'copilot_config.json';
+
+var
+  GlobalLogger: ICopilotLogger = nil; // Will hold reference to logger for debugging
+
+// Enhanced logging procedure for debugging
+procedure LogToSystem(const Level: TLogLevel; const Msg: string);
+var
+  Prefix: string;
+begin
+  try
+    if GlobalLogger = nil then
+      Exit; // No logger available
+    
+    case Level of
+      llDebug:   Prefix := '[DEBUG] ';
+      llInfo:    Prefix := '[INFO] ';
+      llWarning: Prefix := '[WARN] ';
+      llError:   Prefix := '[ERROR] ';
+    end;
+    
+    GlobalLogger.Log(Level, Prefix + Msg);
+  except
+    // Ignore logging errors
+  end;
+end;
+
+// Helper procedures for different log levels
+procedure LogDebug(const Msg: string);
+begin
+  LogToSystem(llDebug, Msg);
+end;
+
+procedure LogInfo(const Msg: string);
+begin
+  LogToSystem(llInfo, Msg);
+end;
+
+procedure LogWarning(const Msg: string);
+begin
+  LogToSystem(llWarning, Msg);
+end;
+
+procedure LogError(const Msg: string);
+begin
+  LogToSystem(llError, Msg);
+end;
 
 { TCopilotAuthenticationService }
 
@@ -143,30 +201,73 @@ end;
 constructor TCopilotChatSession.Create(const AuthService: TCopilotAuthenticationService; 
   const APIEndpoint: string; RequestTimeout: Integer);
 begin
+  LogDebug('TCopilotChatSession.Create: Starting constructor');
   inherited Create;
-  FAuthService := AuthService;
-  FAPIEndpoint := APIEndpoint;
-  FRequestTimeout := RequestTimeout;
-  FSessionId := TGUID.NewGuid.ToString;
-  FMessages := TList<TCopilotChatMessage>.Create;
-  FLock := TCriticalSection.Create;
   
-  // Initialize HTTP client
-  FHttpClient := THTTPClient.Create;
-  FHttpClient.SendTimeout := FRequestTimeout;
-  
-  // Set up request headers
-  FHttpClient.CustomHeaders['Accept'] := 'text/event-stream';
-  FHttpClient.CustomHeaders['Content-Type'] := 'application/json';
-  FHttpClient.CustomHeaders['User-Agent'] := 'RADStudio-Copilot-Extension/1.0';
+  try
+    LogDebug('TCopilotChatSession.Create: Setting basic properties');
+    FAuthService := AuthService;
+    FAPIEndpoint := APIEndpoint;
+    FRequestTimeout := RequestTimeout;
+    FSessionId := TGUID.NewGuid.ToString;
+    LogDebug('TCopilotChatSession.Create: SessionId = ' + FSessionId);
+    
+    LogDebug('TCopilotChatSession.Create: Creating collections');
+    FMessages := TList<TCopilotChatMessage>.Create;
+    FLock := TCriticalSection.Create;
+    
+    LogDebug('TCopilotChatSession.Create: Creating HTTP client');
+    // Initialize HTTP client
+    FHttpClient := THTTPClient.Create;
+    FHttpClient.SendTimeout := FRequestTimeout;
+    
+    LogDebug('TCopilotChatSession.Create: Setting up request headers');
+    // Set up request headers
+    FHttpClient.CustomHeaders['Accept'] := 'text/event-stream';
+    FHttpClient.CustomHeaders['Content-Type'] := 'application/json';
+    FHttpClient.CustomHeaders['User-Agent'] := 'RADStudio-Copilot-Extension/1.0';
+    
+    LogDebug('TCopilotChatSession.Create: Constructor completed successfully');
+  except
+    on E: Exception do
+    begin
+      LogError('TCopilotChatSession.Create: Exception in constructor: ' + E.Message);
+      raise;
+    end;
+  end;
 end;
 
 destructor TCopilotChatSession.Destroy;
 begin
-  FHttpClient.Free;
-  FMessages.Free;
-  FLock.Free;
+  LogDebug('TCopilotChatSession.Destroy: Starting destructor');
+  
+  try
+    LogDebug('TCopilotChatSession.Destroy: Freeing FHttpClient');
+    FreeAndNil(FHttpClient);
+  except
+    on E: Exception do
+      LogError('TCopilotChatSession.Destroy: Error freeing FHttpClient: ' + E.Message);
+  end;
+  
+  try
+    LogDebug('TCopilotChatSession.Destroy: Freeing FMessages');
+    FreeAndNil(FMessages);
+  except
+    on E: Exception do
+      LogError('TCopilotChatSession.Destroy: Error freeing FMessages: ' + E.Message);
+  end;
+  
+  try
+    LogDebug('TCopilotChatSession.Destroy: Freeing FLock');
+    FreeAndNil(FLock);
+  except
+    on E: Exception do
+      LogError('TCopilotChatSession.Destroy: Error freeing FLock: ' + E.Message);
+  end;
+  
+  LogDebug('TCopilotChatSession.Destroy: Calling inherited destructor');
   inherited;
+  LogDebug('TCopilotChatSession.Destroy: Destructor completed');
 end;
 
 function TCopilotChatSession.BuildAPIRequest(const Message: string; 
@@ -177,12 +278,35 @@ var
   ContextObj: TJSONObject;
   I: Integer;
 begin
+  LogDebug('BuildAPIRequest: Starting to build API request');
+  
+  // Check if essential objects are initialized
+  if Self = nil then
+  begin
+    LogError('BuildAPIRequest: Self is nil!');
+    Result := nil;
+    Exit;
+  end;
+  
+  LogDebug('BuildAPIRequest: Creating result object');
   Result := TJSONObject.Create;
+  if Result = nil then
+  begin
+    LogError('BuildAPIRequest: Failed to create result TJSONObject');
+    Exit;
+  end;
   
   try
+    LogDebug('BuildAPIRequest: Creating messages array');
     // Build messages array
     Messages := TJSONArray.Create;
+    if Messages = nil then
+    begin
+      LogError('BuildAPIRequest: Failed to create Messages TJSONArray');
+      raise Exception.Create('Failed to create Messages array');
+    end;
     
+    LogDebug('BuildAPIRequest: Adding system message');
     // Add system message for RAD Studio context
     MessageObj := TJSONObject.Create;
     MessageObj.AddPair('role', 'system');
@@ -190,20 +314,54 @@ begin
       'Provide helpful assistance with Delphi/Pascal code and RAD Studio development.');
     Messages.AddElement(MessageObj);
     
+    LogDebug('BuildAPIRequest: Adding chat history');
     // Add chat history
+    LogDebug('BuildAPIRequest: About to enter critical section');
+    if FLock = nil then
+    begin
+      LogError('BuildAPIRequest: FLock is nil!');
+      raise Exception.Create('FLock is nil');
+    end;
+    
     FLock.Enter;
     try
+      if FMessages = nil then
+      begin
+        LogError('BuildAPIRequest: FMessages is nil!');
+        raise Exception.Create('FMessages is nil');
+      end;
+      
+      LogDebug('BuildAPIRequest: Processing ' + IntToStr(FMessages.Count) + ' historical messages');
       for I := 0 to FMessages.Count - 1 do
       begin
+        LogDebug('BuildAPIRequest: Processing message ' + IntToStr(I));
         MessageObj := TJSONObject.Create;
-        MessageObj.AddPair('role', FMessages[I].Role);
-        MessageObj.AddPair('content', FMessages[I].Content);
+        LogDebug('BuildAPIRequest: Created message object for index ' + IntToStr(I));
+        
+        // Check if the message at index I is valid
+        if I < FMessages.Count then
+        begin
+          LogDebug('BuildAPIRequest: Adding role: ' + FMessages[I].Role);
+          MessageObj.AddPair('role', FMessages[I].Role);
+          LogDebug('BuildAPIRequest: Adding content: ' + Copy(FMessages[I].Content, 1, 20) + '...');
+          MessageObj.AddPair('content', FMessages[I].Content);
+        end
+        else
+        begin
+          LogError('BuildAPIRequest: Index ' + IntToStr(I) + ' is out of bounds!');
+          MessageObj.Free;
+          raise Exception.Create('Message index out of bounds');
+        end;
+        
+        LogDebug('BuildAPIRequest: Adding message to array for index ' + IntToStr(I));
         Messages.AddElement(MessageObj);
       end;
     finally
+      LogDebug('BuildAPIRequest: Leaving critical section');
       FLock.Leave;
     end;
     
+    LogDebug('BuildAPIRequest: Adding current user message');
     // Add current user message with context
     MessageObj := TJSONObject.Create;
     MessageObj.AddPair('role', 'user');
@@ -211,33 +369,52 @@ begin
     // Include code context if provided
     if (Context.FileName <> '') or (Context.SelectedText <> '') then
     begin
+      LogDebug('BuildAPIRequest: Adding context information');
       ContextObj := TJSONObject.Create;
-      if Context.FileName <> '' then
-        ContextObj.AddPair('file', Context.FileName);
-      if Context.SelectedText <> '' then
-        ContextObj.AddPair('selected_code', Context.SelectedText);
-      if Context.Line > 0 then
-      begin
-        ContextObj.AddPair('line', TJSONNumber.Create(Context.Line));
-        ContextObj.AddPair('column', TJSONNumber.Create(Context.Column));
+      try
+        if Context.FileName <> '' then
+          ContextObj.AddPair('file', Context.FileName);
+        if Context.SelectedText <> '' then
+          ContextObj.AddPair('selected_code', Context.SelectedText);
+        if Context.Line > 0 then
+        begin
+          ContextObj.AddPair('line', TJSONNumber.Create(Context.Line));
+          ContextObj.AddPair('column', TJSONNumber.Create(Context.Column));
+        end;
+        
+        MessageObj.AddPair('content', Message + #13#10 + 'Context: ' + ContextObj.ToString);
+      finally
+        ContextObj.Free;
       end;
-      
-      MessageObj.AddPair('content', Message + #13#10 + 'Context: ' + ContextObj.ToString);
-      ContextObj.Free;
     end
     else
+    begin
+      LogDebug('BuildAPIRequest: No context provided, using message only');
       MessageObj.AddPair('content', Message);
+    end;
       
     Messages.AddElement(MessageObj);
     
+    LogDebug('BuildAPIRequest: Building final request object');
     // Build final request
     Result.AddPair('messages', Messages);
     Result.AddPair('stream', TJSONBool.Create(False)); // For synchronous responses
     Result.AddPair('temperature', TJSONNumber.Create(0.7));
     Result.AddPair('max_tokens', TJSONNumber.Create(2048));
     
-  finally
-      Result.Free;
+    LogDebug('BuildAPIRequest: API request built successfully');
+    
+  except
+    on E: Exception do
+    begin
+      LogError('BuildAPIRequest: Exception occurred: ' + E.Message);
+      if Assigned(Result) then
+      begin
+        Result.Free;
+        Result := nil;
+      end;
+      raise;
+    end;
   end;
 end;
 
@@ -352,22 +529,36 @@ var
   ResponseContent: string;
   UserMsg, AssistantMsg: TCopilotChatMessage;
 begin
+  LogDebug('SendMessage: Starting with message: ' + Copy(Message, 1, 50) + '...');
   FillChar(Result, SizeOf(Result), 0);
   Result.Status := crsError;
   
   try
+    LogDebug('SendMessage: Building API request');
     // Build API request
     RequestBody := BuildAPIRequest(Message, Context);
+    if RequestBody = nil then
+    begin
+      LogError('SendMessage: BuildAPIRequest returned nil');
+      Result.ErrorMessage := 'Failed to build API request';
+      Exit;
+    end;
+    
     try
+      LogDebug('SendMessage: Sending HTTP request');
       // Send HTTP request
       ResponseContent := SendHTTPRequest(RequestBody);
+      LogDebug('SendMessage: HTTP request completed, response length: ' + IntToStr(Length(ResponseContent)));
       
+      LogDebug('SendMessage: Parsing API response');
       // Parse response
       Result := ParseAPIResponse(ResponseContent);
+      LogInfo('SendMessage: Response status: ' + IntToStr(Ord(Result.Status)));
       
       // Add messages to history if successful
       if Result.Status = crsSuccess then
       begin
+        LogDebug('SendMessage: Adding messages to history');
         FLock.Enter;
         try
           // Add user message
@@ -381,54 +572,113 @@ begin
           AssistantMsg.Content := Result.Content;
           AssistantMsg.Timestamp := Now;
           FMessages.Add(AssistantMsg);
+          LogDebug('SendMessage: Messages added to history successfully');
         finally
           FLock.Leave;
         end;
+      end
+      else
+      begin
+        LogWarning('SendMessage: Request failed with error: ' + Result.ErrorMessage);
       end;
       
     finally
+      LogDebug('SendMessage: Freeing request body');
       RequestBody.Free;
     end;
     
   except
     on E: Exception do
     begin
+      LogError('SendMessage: Exception occurred: ' + E.Message);
       Result.Status := crsError;
       Result.ErrorMessage := E.Message;
     end;
   end;
+  
+  LogDebug('SendMessage: Completed');
 end;
 
 function TCopilotChatSession.SendMessageAsync(const Message: string; 
   const Context: TCopilotCodeContext; const Callback: ICopilotBridgeCallback): Boolean;
 var
-  Response: TCopilotResponse;
+  WeakCallback: ICopilotBridgeCallback;
 begin
   Result := False;
   
   if Callback = nil then
     Exit;
     
-  try
-    // For now, execute synchronously to avoid threading issues
-    Response := SendMessage(Message, Context);
-    Callback.OnResponse(Response);
-    Result := True;
-  except
-    on E: Exception do
+  // Keep a weak reference to avoid circular references
+  WeakCallback := Callback;
+    
+  // Use TTask with proper synchronization to avoid access violations
+  TTask.Run(
+    procedure
+    var
+      Response: TCopilotResponse;
+      LocalCallback: ICopilotBridgeCallback;
     begin
-      // Create error response
-      FillChar(Response, SizeOf(Response), 0);
-      Response.Status := crsError;
-      Response.ErrorMessage := 'SendMessageAsync error: ' + E.Message;
+      LogDebug('SendMessageAsync: Task started');
       
-      try
-        Callback.OnError(Response.ErrorMessage);
-      except
-        // Ignore callback errors to prevent cascading issues
+      // Copy the callback reference for thread safety
+      LocalCallback := WeakCallback;
+      if LocalCallback = nil then
+      begin
+        LogWarning('SendMessageAsync: LocalCallback is nil, exiting');
+        Exit;
       end;
-    end;
-  end;
+        
+      try
+        LogDebug('SendMessageAsync: Calling SendMessage');
+        // Call the synchronous SendMessage in the background thread
+        Response := SendMessage(Message, Context);
+        LogDebug('SendMessageAsync: SendMessage completed, status: ' + IntToStr(Ord(Response.Status)));
+        
+        // Use TThread.Queue instead of Synchronize for better performance
+        TThread.Queue(nil,
+          procedure
+          begin
+            try
+              LogDebug('SendMessageAsync: Executing success callback');
+              if Assigned(LocalCallback) then
+                LocalCallback.OnResponse(Response)
+              else
+                LogWarning('SendMessageAsync: LocalCallback became nil in success callback');
+            except
+              on E: Exception do
+                LogError('SendMessageAsync: Exception in success callback: ' + E.Message);
+            end;
+          end);
+      except
+        on E: Exception do
+        begin
+          LogError('SendMessageAsync: Exception in background thread: ' + E.Message);
+          // Create error response
+          FillChar(Response, SizeOf(Response), 0);
+          Response.Status := crsError;
+          Response.ErrorMessage := 'SendMessageAsync error: ' + E.Message;
+          
+          // Queue the error callback as well
+          TThread.Queue(nil,
+            procedure
+            begin
+              try
+                LogDebug('SendMessageAsync: Executing error callback');
+                if Assigned(LocalCallback) then
+                  LocalCallback.OnError(Response.ErrorMessage)
+                else
+                  LogWarning('SendMessageAsync: LocalCallback became nil in error callback');
+              except
+                on E2: Exception do
+                  LogError('SendMessageAsync: Exception in error callback: ' + E2.Message);
+              end;
+            end);
+        end;
+      end;
+    end);
+  
+  Result := True;
 end;
 
 function TCopilotChatSession.GetChatHistory: TArray<TCopilotChatMessage>;
@@ -480,10 +730,36 @@ end;
 
 destructor TCopilotBridge.Destroy;
 begin
-  Finalize;
-  FHttpClient.Free;
-  FConfiguration.Free;
-  FLock.Free;
+  try
+    Finalize;
+  except
+    // Ignore finalization errors during destruction
+  end;
+  
+  try
+    FreeAndNil(FHttpClient);
+  except
+    // Ignore cleanup errors
+  end;
+  
+  try
+    FreeAndNil(FConfiguration);
+  except
+    // Ignore cleanup errors
+  end;
+  
+  try
+    FreeAndNil(FAuthService);
+  except
+    // Ignore cleanup errors
+  end;
+  
+  try
+    FreeAndNil(FLock);
+  except
+    // Ignore cleanup errors
+  end;
+  
   inherited;
 end;
 
@@ -765,25 +1041,36 @@ function TCopilotBridge.SendChatMessageAsync(const Message: string; const Contex
 var
   Session: ICopilotChatSession;
   CopilotContext: TCopilotCodeContext;
+  WeakCallback: ICopilotBridgeCallback;
 begin
   Result := False;
   
   if Callback = nil then
     Exit;
     
+  WeakCallback := Callback;
+    
   Session := CreateChatSession;
   if Session = nil then
   begin
-    // Send error callback
-    TTask.Run(procedure
-    var
-      ErrorResponse: TCopilotResponse;
-    begin
-      FillChar(ErrorResponse, SizeOf(ErrorResponse), 0);
-      ErrorResponse.Status := crsError;
-      ErrorResponse.ErrorMessage := FLastError;
-      Callback.OnResponse(ErrorResponse);
-    end);
+    // Send error callback safely
+    TThread.Queue(nil, 
+      procedure
+      var
+        ErrorResponse: TCopilotResponse;
+      begin
+        try
+          if Assigned(WeakCallback) then
+          begin
+            FillChar(ErrorResponse, SizeOf(ErrorResponse), 0);
+            ErrorResponse.Status := crsError;
+            ErrorResponse.ErrorMessage := FLastError;
+            WeakCallback.OnResponse(ErrorResponse);
+          end;
+        except
+          // Ignore callback errors
+        end;
+      end);
     Exit;
   end;
   
@@ -792,7 +1079,7 @@ begin
   if Context <> '' then
     CopilotContext.SelectedText := Context;
     
-  Result := Session.SendMessageAsync(Message, CopilotContext, Callback);
+  Result := Session.SendMessageAsync(Message, CopilotContext, WeakCallback);
 end;
 
 procedure TCopilotBridge.ShowSettingsDialog;
@@ -817,6 +1104,12 @@ begin
     SettingsForm.Free;
     Config.Free;
   end;
+end;
+
+// Global logger setter procedure
+procedure SetGlobalLogger(const Logger: ICopilotLogger);
+begin
+  GlobalLogger := Logger;
 end;
 
 { TCopilotBridgeFactory }

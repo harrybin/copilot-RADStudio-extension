@@ -14,10 +14,11 @@ uses
   System.Classes, Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs,
   Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.Buttons, Vcl.Menus,
   CopilotExtension.IBridge,
-  CopilotExtension.Services.Core;
+  CopilotExtension.Services.Core,
+  CopilotExtension.IBridgeImpl; // For TLogLevel and ICopilotLogger
 
 type
-  TCopilotChatPanel = class(TFrame, ICopilotBridgeCallback)
+  TCopilotChatPanel = class(TFrame, ICopilotBridgeCallback, ICopilotLogger)
     pnlMain: TPanel;
     pnlTop: TPanel;
     pnlBottom: TPanel;
@@ -78,6 +79,9 @@ type
     procedure OnError(const ErrorMessage: string);
     procedure OnStatusUpdate(const Status: string);
     
+    // ICopilotLogger implementation
+    procedure Log(const Level: TLogLevel; const Msg: string);
+    
     // Public methods
     procedure SetCoreService(const CoreService: TCopilotCoreService);
     procedure RefreshChatHistory;
@@ -96,7 +100,7 @@ implementation
 
 uses
   ToolsAPI, CopilotExtension.IToolsAPIImpl, CopilotExtension.IToolsAPI,
-  CopilotExtension.IBridgeImpl, CopilotExtension.UI.SettingsDialog, System.JSON;
+  CopilotExtension.UI.SettingsDialog, System.JSON;
 
 { TCopilotChatPanel }
 
@@ -104,6 +108,10 @@ constructor TCopilotChatPanel.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FIsProcessing := False;
+  
+  // Set up global logging to use this chat panel
+  CopilotExtension.IBridgeImpl.SetGlobalLogger(Self);
+  
   InitializeCopilotServices;
   UpdateStatusDisplay;
 end;
@@ -370,6 +378,31 @@ end;
 procedure TCopilotChatPanel.OnStatusUpdate(const Status: string);
 begin
   lblStatus.Caption := Status;
+end;
+
+procedure TCopilotChatPanel.Log(const Level: TLogLevel; const Msg: string);
+var
+  Role: string;
+  FilteredMsg: string;
+begin
+  // Convert log level to role for chat display
+  case Level of
+    llDebug:   Role := 'debug';
+    llInfo:    Role := 'info';
+    llWarning: Role := 'warning';
+    llError:   Role := 'error';
+  else
+    Role := 'log';
+  end;
+  
+  // Temporarily show all messages for debugging access violations
+  // Filter messages to avoid spam - only show warnings and errors by default
+  // You can comment out this filter to see all debug messages
+  if Level in [llDebug, llInfo, llWarning, llError] then // Show all for debugging
+  begin
+    FilteredMsg := Msg;
+    AddChatMessage(FilteredMsg, Role);
+  end;
 end;
 
 // Event handlers

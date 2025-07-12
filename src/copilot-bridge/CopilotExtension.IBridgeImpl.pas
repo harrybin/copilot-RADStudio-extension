@@ -401,34 +401,34 @@ end;
 
 function TCopilotChatSession.SendMessageAsync(const Message: string; 
   const Context: TCopilotCodeContext; const Callback: ICopilotBridgeCallback): Boolean;
+var
+  Response: TCopilotResponse;
 begin
   Result := False;
   
   if Callback = nil then
     Exit;
     
-  // Execute async using thread pool
-  TTask.Run(
-    procedure
-    var
-      Response: TCopilotResponse;
+  try
+    // For now, execute synchronously to avoid threading issues
+    Response := SendMessage(Message, Context);
+    Callback.OnResponse(Response);
+    Result := True;
+  except
+    on E: Exception do
     begin
+      // Create error response
+      FillChar(Response, SizeOf(Response), 0);
+      Response.Status := crsError;
+      Response.ErrorMessage := 'SendMessageAsync error: ' + E.Message;
+      
       try
-        Response := SendMessage(Message, Context);
-        Callback.OnResponse(Response);
+        Callback.OnError(Response.ErrorMessage);
       except
-        on E: Exception do
-        begin
-          FillChar(Response, SizeOf(Response), 0);
-          Response.Status := crsError;
-          Response.ErrorMessage := E.Message;
-          Callback.OnResponse(Response);
-        end;
+        // Ignore callback errors to prevent cascading issues
       end;
-    end
-  );
-  
-  Result := True;
+    end;
+  end;
 end;
 
 function TCopilotChatSession.GetChatHistory: TArray<TCopilotChatMessage>;

@@ -34,6 +34,7 @@ type
   private
     FForm: TCopilotDockableWindow;
     FChatPanel: TCopilotChatPanel;
+    FCoreService: TCopilotCoreService; // Store the core service
   public
     constructor Create;
     destructor Destroy; override;
@@ -82,6 +83,7 @@ begin
   inherited Create;
   FForm := nil;
   FChatPanel := nil;
+  FCoreService := nil;
 end;
 
 destructor TCopilotDockableForm.Destroy;
@@ -107,6 +109,10 @@ begin
   begin
     FForm := TCopilotDockableWindow.Create(nil);
     FChatPanel := FForm.ChatPanel;
+    
+    // Now that we have the ChatPanel, inject the Core service if available
+    if Assigned(FCoreService) and Assigned(FChatPanel) then
+      FChatPanel.SetCoreService(FCoreService);
   end;
   FForm.Show;
 end;
@@ -119,8 +125,19 @@ end;
 
 procedure TCopilotDockableForm.SetCoreService(const CoreService: TCopilotCoreService);
 begin
+  FCoreService := CoreService;
+  
+  // If the ChatPanel is already created, inject the service immediately
   if Assigned(FChatPanel) then
+  begin
     FChatPanel.SetCoreService(CoreService);
+    // Add debug message to verify injection
+    if Assigned(CoreService) then
+      // Note: We can't easily add chat message here since it would be circular
+      // The debug message will be added by the ChatPanel's SetCoreService method
+    else
+      // Same here - ChatPanel will handle the debug message
+  end;
 end;
 
 end.

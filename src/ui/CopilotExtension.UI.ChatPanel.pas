@@ -276,6 +276,10 @@ end;
 procedure TCopilotChatPanel.SetCoreService(const CoreService: TCopilotCoreService);
 begin
   FCoreService := CoreService;
+  if Assigned(FCoreService) then
+    AddChatMessage('Debug: Core service has been set successfully.', 'system')
+  else
+    AddChatMessage('Debug: Core service was set to nil.', 'system');
 end;
 
 procedure TCopilotChatPanel.RefreshChatHistory;
@@ -401,6 +405,16 @@ var
   GitHubToken: string;
 begin
   try
+    // Debug: Check if core service is available
+    if not Assigned(FCoreService) then
+    begin
+      AddChatMessage('Debug: Core service is not assigned to ChatPanel.', 'system');
+      AddChatMessage('Unable to access settings: Core service not available.', 'system');
+      Exit;
+    end;
+    
+    AddChatMessage('Debug: Core service is available, getting configuration...', 'system');
+    
     // Get current configuration from core service
     CurrentConfig := nil;
     if Assigned(FCoreService) then

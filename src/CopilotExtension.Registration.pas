@@ -72,11 +72,12 @@ begin
         // Create the dockable form manager
         CopilotDockableForm := TCopilotDockableForm.Create;
         
-        // Inject the Core service
+        // Show the window first to create the ChatPanel
+        CopilotDockableForm.ShowWindow;
+        
+        // Then inject the Core service
         CopilotDockableForm.SetCoreService(CopilotCoreService);
         
-        // Show the window
-        CopilotDockableForm.ShowWindow;
         Exit;
       except
         on E: Exception do

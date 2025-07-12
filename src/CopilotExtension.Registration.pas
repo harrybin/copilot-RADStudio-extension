@@ -13,8 +13,6 @@ uses
   System.Threading, System.Classes, Winapi.Windows, Winapi.Messages,
   CopilotExtension.UI.DockableWindow;
 
-procedure RegisterCopilotSettingsMenu;
-
 procedure Register;
 
 implementation
@@ -39,33 +37,6 @@ begin
     Bridge.ShowSettingsDialog;
   finally
     Bridge.Free;
-  end;
-end;
-
-procedure RegisterCopilotSettingsMenu;
-var
-  Svc: INTAServices;
-  MainMenu: TMainMenu;
-  ToolsMenu: TMenuItem;
-  I: Integer;
-  MenuItem: TMenuItem;
-  SettingsMenuHandler: TSettingsMenuHandler;
-begin
-  if Assigned(BorlandIDEServices) and Supports(BorlandIDEServices, INTAServices, Svc) then
-  begin
-    MainMenu := Svc.MainMenu;
-    ToolsMenu := nil;
-    for I := 0 to MainMenu.Items.Count - 1 do
-      if SameText(MainMenu.Items[I].Name, 'ToolsMenu') then
-        ToolsMenu := MainMenu.Items[I];
-    if Assigned(ToolsMenu) then
-    begin
-      MenuItem := TMenuItem.Create(nil);
-      MenuItem.Caption := 'Copilot Settings...';
-      SettingsMenuHandler := TSettingsMenuHandler.Create;
-      MenuItem.OnClick := SettingsMenuHandler.OnCopilotSettingsClick;
-      ToolsMenu.Add(MenuItem);
-    end;
   end;
 end;
 
@@ -154,7 +125,6 @@ begin
 end;
 
 initialization
-  RegisterCopilotSettingsMenu;
   // Package initialization happens through Register procedure
   Randomize; // Initialize random number generator for simulated responses
 

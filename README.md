@@ -31,7 +31,7 @@ This extension creates an adapter wrapper around the VS Code Copilot Chat functi
 2. Install via Component > Install Packages in RAD Studio
 3. Configure GitHub Copilot authentication
 
-## Using the DelphiLSP Server
+## Using the DelphiLSP Server of the VS Code Extension EmbarcaderoTechnologies.delphilsp
 
 To enable advanced code insight and language features for Delphi projects in VS Code, follow these steps:
 

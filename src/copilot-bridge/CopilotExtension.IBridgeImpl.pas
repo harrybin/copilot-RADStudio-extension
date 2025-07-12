@@ -799,12 +799,14 @@ procedure TCopilotBridge.ShowSettingsDialog;
 var
   SettingsForm: TfrmCopilotSettings;
   NewConfig: TJSONObject;
+  Config: TJSONObject;
 begin
-  SettingsForm := TfrmCopilotSettings.CreateSettings(nil, GetConfiguration);
+  Config := GetConfiguration;
+  SettingsForm := TfrmCopilotSettings.CreateSettings(nil, Config.GetValue<string>('username', ''), Config.GetValue<string>('token', ''));
   try
     if SettingsForm.ShowModal = mrOk then
     begin
-      NewConfig := SettingsForm.GetConfig;
+      NewConfig := SettingsForm.GetGithubConfig;
       try
         SetConfiguration(NewConfig);
       finally
@@ -813,6 +815,7 @@ begin
     end;
   finally
     SettingsForm.Free;
+    Config.Free;
   end;
 end;
 

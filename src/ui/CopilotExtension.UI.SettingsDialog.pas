@@ -1,51 +1,115 @@
 unit CopilotExtension.UI.SettingsDialog;
 
 interface
+uses
+  System.SysUtils, System.Classes, Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls, System.JSON, Winapi.Windows;
+
+type
+  TfrmCopilotSettings = class(TForm)
+  published
+    lblGithubUsername: TLabel;
+    edtGithubUsername: TEdit;
+    lblGithubToken: TLabel;
+    edtGithubToken: TEdit;
+    btnOK: TButton;
+    btnCancel: TButton;
+    procedure btnOKClick(Sender: TObject);
+    procedure btnCancelClick(Sender: TObject);
+  private
+    FGithubUsername: string;
+    FGithubToken: string;
+  public
+    constructor CreateSettings(AOwner: TComponent; const AGithubUsername, AGithubToken: string); reintroduce;
+    function GetGithubConfig: TJSONObject;
+  end;
+implementation
+
+{$R CopilotExtension.UI.SettingsDialog.dfm}
+constructor TfrmCopilotSettings.CreateSettings(AOwner: TComponent; const AGithubUsername, AGithubToken: string);
+begin
+  inherited Create(AOwner);
+  FGithubUsername := AGithubUsername;
+  FGithubToken := AGithubToken;
+  edtGithubUsername.Text := FGithubUsername;
+  edtGithubToken.Text := FGithubToken;
+  edtGithubToken.PasswordChar := '*';
+end;
+
+function TfrmCopilotSettings.GetGithubConfig: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('username', edtGithubUsername.Text);
+  Result.AddPair('token', edtGithubToken.Text);
+end;
+procedure TfrmCopilotSettings.btnOKClick(Sender: TObject);
+begin
+  ModalResult := mrOk;
+end;
+
+procedure TfrmCopilotSettings.btnCancelClick(Sender: TObject);
+begin
+  ModalResult := mrCancel;
+end;
+
+end.
+begin
+  inherited Create(AOwner);
+  FGithubUsername := AGithubUsername;
+  FGithubToken := AGithubToken;
+  edtGithubUsername.Text := FGithubUsername;
+  edtGithubToken.Text := FGithubToken;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('username', edtGithubUsername.Text);
+  Result.AddPair('token', edtGithubToken.Text);
+begin
+  ModalResult := mrOk;
+begin
+  ModalResult := mrCancel;
+unit CopilotExtension.UI.SettingsDialog;
+
+interface
 
 uses
   System.SysUtils, System.Classes, Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls, System.JSON, Winapi.Windows;
 
 type
   TfrmCopilotSettings = class(TForm)
-    lblApiEndpoint: TLabel;
-    edtApiEndpoint: TEdit;
-    lblTimeout: TLabel;
-    edtTimeout: TEdit;
-    lblRetry: TLabel;
-    edtRetry: TEdit;
+  published
+    lblGithubUsername: TLabel;
+    edtGithubUsername: TEdit;
+    lblGithubToken: TLabel;
+    edtGithubToken: TEdit;
     btnOK: TButton;
     btnCancel: TButton;
     procedure btnOKClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
   private
-    FConfig: TJSONObject;
+    FGithubUsername: string;
+    FGithubToken: string;
   public
-    constructor CreateSettings(AOwner: TComponent; Config: TJSONObject); reintroduce;
-    function GetConfig: TJSONObject;
+    constructor CreateSettings(AOwner: TComponent; const AGithubUsername, AGithubToken: string); reintroduce;
+    function GetGithubConfig: TJSONObject;
   end;
 
 implementation
 
 {$R CopilotExtension.UI.SettingsDialog.dfm}
 
-constructor TfrmCopilotSettings.CreateSettings(AOwner: TComponent; Config: TJSONObject);
+constructor TfrmCopilotSettings.CreateSettings(AOwner: TComponent; const AGithubUsername, AGithubToken: string);
 begin
   inherited Create(AOwner);
-  FConfig := Config;
-  if FConfig <> nil then
-  begin
-    edtApiEndpoint.Text := FConfig.GetValue<string>('api_endpoint', '');
-    edtTimeout.Text := FConfig.GetValue<string>('request_timeout', '30000');
-    edtRetry.Text := FConfig.GetValue<string>('retry_attempts', '3');
-  end;
+  FGithubUsername := AGithubUsername;
+  FGithubToken := AGithubToken;
+  edtGithubUsername.Text := FGithubUsername;
+  edtGithubToken.Text := FGithubToken;
 end;
 
-function TfrmCopilotSettings.GetConfig: TJSONObject;
+function TfrmCopilotSettings.GetGithubConfig: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('api_endpoint', edtApiEndpoint.Text);
-  Result.AddPair('request_timeout', TJSONNumber.Create(StrToIntDef(edtTimeout.Text, 30000)));
-  Result.AddPair('retry_attempts', TJSONNumber.Create(StrToIntDef(edtRetry.Text, 3)));
+  Result.AddPair('username', edtGithubUsername.Text);
+  Result.AddPair('token', edtGithubToken.Text);
 end;
 
 procedure TfrmCopilotSettings.btnOKClick(Sender: TObject);

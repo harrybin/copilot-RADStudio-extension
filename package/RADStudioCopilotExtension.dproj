@@ -10,7 +10,7 @@
         <FrameworkType>VCL</FrameworkType>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>1</TargetedPlatforms>
-        <ProjectName Condition="'$(ProjectName)'==''">Copilot Extension for RAD Studio by harrybin</ProjectName>
+        <ProjectName Condition="'$(ProjectName)'==''">RADStudioCopilotExtension</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -121,6 +121,23 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="rtl.dcp"/>
+        <DCCReference Include="vcl.dcp"/>
+        <DCCReference Include="vclx.dcp"/>
+        <DCCReference Include="designide.dcp"/>
+        <DCCReference Include="..\src\CopilotExtension.Registration.pas"/>
+        <DCCReference Include="..\src\toolsapi\CopilotExtension.IToolsAPI.pas"/>
+        <DCCReference Include="..\src\toolsapi\CopilotExtension.IToolsAPIImpl.pas"/>
+        <DCCReference Include="..\src\copilot-bridge\CopilotBridgeIntf.pas"/>
+        <DCCReference Include="..\src\copilot-bridge\CopilotExtension.IBridge.pas"/>
+        <DCCReference Include="..\src\copilot-bridge\CopilotExtension.IBridgeImpl.pas"/>
+        <DCCReference Include="..\src\ui\CopilotExtension.UI.ChatPanel.pas">
+            <Form>TCopilotChatPanel</Form>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="..\src\ui\CopilotExtension.UI.DockableWindow.pas"/>
+        <DCCReference Include="..\src\ui\CopilotExtension.UI.SettingsDialog.pas"/>
+        <DCCReference Include="..\src\services\CopilotExtension.Services.Core.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -180,6 +197,7 @@
                 <Platform value="Win64">False</Platform>
                 <Platform value="Win64x">False</Platform>
             </Platforms>
+            <ModelSupport>False</ModelSupport>
         </BorlandProject>
         <ProjectFileVersion>12</ProjectFileVersion>
     </ProjectExtensions>

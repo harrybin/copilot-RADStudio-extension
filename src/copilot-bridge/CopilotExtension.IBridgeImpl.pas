@@ -13,7 +13,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.JSON, System.Net.HttpClient,
   System.Net.URLClient, System.SyncObjs, System.Threading, System.Generics.Collections,
-  System.IOUtils, Winapi.Windows,
+  System.IOUtils, Winapi.Windows, Vcl.Controls,
   CopilotExtension.IBridge, CopilotExtension.IToolsAPI;
 
 type
@@ -74,7 +74,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    
+    procedure ShowSettingsDialog;
+
     // ICopilotBridge implementation
     function Initialize: Boolean;
     procedure Finalize;
@@ -101,7 +102,8 @@ type
 implementation
 
 uses
-  System.RegularExpressions, System.StrUtils, System.NetEncoding;
+  System.RegularExpressions, System.StrUtils, System.NetEncoding,
+  CopilotExtension.UI.SettingsDialog, Vcl.Forms;
 
 const
   GITHUB_COPILOT_API_ENDPOINT = 'https://api.githubcopilot.com/chat/completions';
@@ -791,6 +793,27 @@ begin
     CopilotContext.SelectedText := Context;
     
   Result := Session.SendMessageAsync(Message, CopilotContext, Callback);
+end;
+
+procedure TCopilotBridge.ShowSettingsDialog;
+var
+  SettingsForm: TfrmCopilotSettings;
+  NewConfig: TJSONObject;
+begin
+  SettingsForm := TfrmCopilotSettings.CreateSettings(nil, GetConfiguration);
+  try
+    if SettingsForm.ShowModal = mrOk then
+    begin
+      NewConfig := SettingsForm.GetConfig;
+      try
+        SetConfiguration(NewConfig);
+      finally
+        NewConfig.Free;
+      end;
+    end;
+  finally
+    SettingsForm.Free;
+  end;
 end;
 
 { TCopilotBridgeFactory }

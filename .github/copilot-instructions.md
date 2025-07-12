@@ -27,6 +27,8 @@ This is a RAD Studio IDE extension that creates an adapter wrapper around the [V
 - Use Pascal/Delphi filename conventions and class naming conventions
 - Follow RAD Studio's VCL component design patterns for UI components
 - find default [unit documentation here](https://docwiki.embarcadero.com/Libraries/Athens/en/Unit_List)
+- for the objectpascel/delphi programming language use the reference [Object Pascal Language Guide](https://docwiki.embarcadero.com/RADStudio/Athens/en/Delphi_Language_Reference)
+  Always reguard that the Object Pascal Language Guide is the primary source for language features, syntax, and semantics.
 
 ### Tools API Best Practices
 
@@ -109,8 +111,13 @@ This is a RAD Studio IDE extension that creates an adapter wrapper around the [V
 
 ## Development Notes
 
-- Always test with latest RAD Studio release (currently Athens 12.3)
 - VS Code Copilot Chat updates frequently - monitor compatibility
 - Consider enterprise authentication requirements for GitHub Copilot access
 - Implement graceful degradation when Copilot services unavailable
+
+## Development Workflow
+
+- implement the requested feature in the source code
 - at the end of code creation, after all identified tasks are done build the package by using the vscode task "🚀Build Extension🚀"
+- check for compilation errors and fix them
+- reapeat rebuilding until no errors are present, or you detect some kind loop with the steps above

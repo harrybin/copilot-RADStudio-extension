@@ -96,7 +96,7 @@ implementation
 
 uses
   ToolsAPI, CopilotExtension.IToolsAPIImpl, CopilotExtension.IToolsAPI,
-  CopilotExtension.IBridgeImpl;
+  CopilotExtension.IBridgeImpl, CopilotExtension.UI.SettingsDialog, System.JSON;
 
 { TCopilotChatPanel }
 
@@ -393,9 +393,67 @@ begin
 end;
 
 procedure TCopilotChatPanel.btnSettingsClick(Sender: TObject);
+var
+  SettingsDialog: TfrmCopilotSettings;
+  CurrentConfig: TJSONObject;
+  NewConfig: TJSONObject;
+  GitHubUsername: string;
+  GitHubToken: string;
 begin
-  // TODO: Show settings dialog
-  ShowMessage('Settings dialog will be implemented');
+  try
+    // Get current configuration from core service
+    CurrentConfig := nil;
+    if Assigned(FCoreService) then
+      CurrentConfig := FCoreService.GetConfiguration;
+    
+    // Extract GitHub settings or use defaults
+    GitHubUsername := '';
+    GitHubToken := '';
+    
+    if Assigned(CurrentConfig) then
+    begin
+      if CurrentConfig.GetValue('github_username') <> nil then
+        GitHubUsername := CurrentConfig.GetValue('github_username').Value;
+      if CurrentConfig.GetValue('github_token') <> nil then
+        GitHubToken := CurrentConfig.GetValue('github_token').Value;
+    end;
+    
+    // Create and show settings dialog
+    SettingsDialog := TfrmCopilotSettings.CreateSettings(Self, GitHubUsername, GitHubToken);
+    try
+      if SettingsDialog.ShowModal = mrOk then
+      begin
+        // Get new configuration from dialog
+        NewConfig := SettingsDialog.GetGithubConfig;
+        try
+          // Update core service configuration
+          if Assigned(FCoreService) then
+          begin
+            FCoreService.SetConfigValue('github_username', NewConfig.GetValue('username').Value);
+            FCoreService.SetConfigValue('github_token', NewConfig.GetValue('token').Value);
+            AddChatMessage('Settings updated successfully.', 'system');
+            
+            // Update display to reflect any changes
+            UpdateStatusDisplay;
+          end
+          else
+          begin
+            AddChatMessage('Unable to save settings: Core service not available.', 'system');
+          end;
+        finally
+          NewConfig.Free;
+        end;
+      end;
+    finally
+      SettingsDialog.Free;
+    end;
+    
+  except
+    on E: Exception do
+    begin
+      AddChatMessage('Error opening settings dialog: ' + E.Message, 'system');
+    end;
+  end;
 end;
 
 procedure TCopilotChatPanel.btnHelpClick(Sender: TObject);

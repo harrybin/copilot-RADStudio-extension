@@ -45,6 +45,9 @@ type
     procedure ShowWindow;
     procedure HideWindow;
     procedure SetCoreService(const CoreService: TCopilotCoreService);
+    
+    // Properties
+    property ChatPanel: TCopilotChatPanel read FChatPanel;
   end;
 
 implementation

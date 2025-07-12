@@ -27,6 +27,14 @@ type
     procedure OnCopilotSettingsClick(Sender: TObject);
   end;
 
+var
+  CopilotMenuItem: TMenuItem = nil;
+  CopilotSettingsMenuItem: TMenuItem = nil;
+  CopilotMenuHandler: TObject = nil;
+  CopilotSettingsMenuHandler: TObject = nil;
+  CopilotDockableForm: TCopilotDockableForm = nil;
+  CopilotCoreService: TCopilotCoreService = nil;
+
 procedure TSettingsMenuHandler.OnCopilotSettingsClick(Sender: TObject);
 var
   Bridge: TCopilotBridge;
@@ -35,16 +43,16 @@ begin
   try
     Bridge.Initialize;
     Bridge.ShowSettingsDialog;
+    
+    // After settings are saved, reload configuration in the main Chat Panel
+    if Assigned(CopilotDockableForm) and Assigned(CopilotDockableForm.ChatPanel) then
+    begin
+      CopilotDockableForm.ChatPanel.ReloadConfiguration;
+    end;
   finally
     Bridge.Free;
   end;
 end;
-
-var
-  CopilotMenuItem: TMenuItem = nil;
-  CopilotMenuHandler: TObject = nil;
-  CopilotDockableForm: TCopilotDockableForm = nil;
-  CopilotCoreService: TCopilotCoreService = nil;
 
 // Local class for menu click handler
 type
@@ -132,6 +140,13 @@ begin
       CopilotMenuHandler := TMenuHandler.Create;
       CopilotMenuItem.OnClick := TMenuHandler(CopilotMenuHandler).OnCopilotMenuClick;
       ToolsMenu.Add(CopilotMenuItem);
+      
+      // Add Copilot Settings menu item
+      CopilotSettingsMenuItem := TMenuItem.Create(nil);
+      CopilotSettingsMenuItem.Caption := 'Copilot Settings...';
+      CopilotSettingsMenuHandler := TSettingsMenuHandler.Create;
+      CopilotSettingsMenuItem.OnClick := TSettingsMenuHandler(CopilotSettingsMenuHandler).OnCopilotSettingsClick;
+      ToolsMenu.Add(CopilotSettingsMenuItem);
     end;
   end;
 end;
@@ -150,7 +165,11 @@ finalization
   end;
   if Assigned(CopilotMenuItem) then
     CopilotMenuItem.Free;
+  if Assigned(CopilotSettingsMenuItem) then
+    CopilotSettingsMenuItem.Free;
   if Assigned(CopilotMenuHandler) then
     CopilotMenuHandler.Free;
+  if Assigned(CopilotSettingsMenuHandler) then
+    CopilotSettingsMenuHandler.Free;
 
 end.

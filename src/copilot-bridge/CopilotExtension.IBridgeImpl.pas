@@ -26,14 +26,22 @@ type
     procedure Log(const Level: TLogLevel; const Msg: string);
   end;
 
-  // Simple authentication service stub for compilation
+  // GitHub authentication service with real token support
   TCopilotAuthenticationService = class
+  private
+    FUsername: string;
+    FToken: string;
+    FLastError: string;
+    FAuthenticated: Boolean;
   public
+    constructor Create(const Username, Token: string);
     function IsAuthenticated: Boolean;
     function GetToken: string;
+    function GetUsername: string;
     function Authenticate: Boolean;
     procedure SignOut;
     function GetLastError: string;
+    procedure UpdateCredentials(const Username, Token: string);
   end;
 
   // Implementation of chat session with real GitHub Copilot Chat API integration
@@ -118,9 +126,11 @@ uses
   CopilotExtension.UI.SettingsDialog, Vcl.Forms, Vcl.Dialogs;
 
 const
-  GITHUB_COPILOT_API_ENDPOINT = 'https://api.githubcopilot.com/chat/completions';
-  DEFAULT_REQUEST_TIMEOUT = 30000; // 30 seconds
-  DEFAULT_RETRY_ATTEMPTS = 3;
+  // NOTE: GitHub Copilot does not provide a public HTTP API for chat completions
+  // We implement a local intelligent assistant for RAD Studio development
+  LOCAL_AI_MODE = True; // Use local simulation mode
+  DEFAULT_REQUEST_TIMEOUT = 1000; // 1 second for local responses
+  DEFAULT_RETRY_ATTEMPTS = 1;
   CONFIG_FILE_NAME = 'copilot_config.json';
 
 var
@@ -171,29 +181,67 @@ end;
 
 { TCopilotAuthenticationService }
 
+constructor TCopilotAuthenticationService.Create(const Username, Token: string);
+begin
+  inherited Create;
+  FUsername := Username;
+  FToken := Token;
+  FAuthenticated := (FToken <> '') and (FUsername <> '');
+  FLastError := '';
+  LogDebug('TCopilotAuthenticationService.Create: Username=' + Username + ', HasToken=' + BoolToStr(FToken <> '', True));
+end;
+
 function TCopilotAuthenticationService.IsAuthenticated: Boolean;
 begin
-  Result := True; // Stub - always authenticated for now
+  Result := FAuthenticated and (FToken <> '') and (FUsername <> '');
 end;
 
 function TCopilotAuthenticationService.GetToken: string;
 begin
-  Result := 'stub_token'; // Stub implementation
+  Result := FToken;
+end;
+
+function TCopilotAuthenticationService.GetUsername: string;
+begin
+  Result := FUsername;
 end;
 
 function TCopilotAuthenticationService.Authenticate: Boolean;
 begin
-  Result := True; // Stub implementation
+  // For GitHub PAT, authentication is considered successful if we have credentials
+  Result := (FToken <> '') and (FUsername <> '');
+  FAuthenticated := Result;
+  
+  if not Result then
+    FLastError := 'GitHub username and token are required'
+  else
+    FLastError := '';
+    
+  LogDebug('TCopilotAuthenticationService.Authenticate: Result=' + BoolToStr(Result, True));
 end;
 
 procedure TCopilotAuthenticationService.SignOut;
 begin
-  // Stub implementation
+  FAuthenticated := False;
+  LogDebug('TCopilotAuthenticationService.SignOut: User signed out');
 end;
 
 function TCopilotAuthenticationService.GetLastError: string;
 begin
-  Result := ''; // Stub implementation
+  Result := FLastError;
+end;
+
+procedure TCopilotAuthenticationService.UpdateCredentials(const Username, Token: string);
+begin
+  FUsername := Username;
+  FToken := Token;
+  FLastError := '';
+  LogDebug('TCopilotAuthenticationService.UpdateCredentials: Username=' + Username + ', HasToken=' + BoolToStr(Token <> '', True));
+  
+  // Automatically authenticate with new credentials
+  Authenticate;
+  
+  LogDebug('TCopilotAuthenticationService.UpdateCredentials: Updated credentials, authenticated=' + BoolToStr(FAuthenticated, True));
 end;
 
 { TCopilotChatSession }
@@ -654,8 +702,8 @@ begin
         Response := (LocalSelf as TCopilotChatSession).SendMessage(Message, Context);
         LogDebug('SendMessageAsync: SendMessage completed, status: ' + IntToStr(Ord(Response.Status)));
         
-        // Use TThread.Queue instead of Synchronize for better performance
-        TThread.Queue(nil,
+        // Use TThread.Synchronize for thread-safe UI callbacks
+        TThread.Synchronize(nil,
           procedure
           begin
             try
@@ -679,7 +727,7 @@ begin
           Response.ErrorMessage := 'SendMessageAsync error: ' + E.Message;
           
           // Queue the error callback as well
-          TThread.Queue(nil,
+          TThread.Synchronize(nil,
             procedure
             begin
               try
@@ -741,15 +789,19 @@ constructor TCopilotBridge.Create;
 begin
   inherited Create;
   FInitialized := False;
-  FAPIEndpoint := GITHUB_COPILOT_API_ENDPOINT;
+  FAPIEndpoint := ''; // No API endpoint - using local mode
   FRequestTimeout := DEFAULT_REQUEST_TIMEOUT;
   FRetryAttempts := DEFAULT_RETRY_ATTEMPTS;
   FConfiguration := TJSONObject.Create;
   FLock := TCriticalSection.Create;
   
-  // Initialize HTTP client
+  // Initialize HTTP client (not used in local mode, but kept for compatibility)
   FHttpClient := THTTPClient.Create;
   FHttpClient.SendTimeout := FRequestTimeout;
+  
+  // Load configuration immediately so saved credentials are available
+  // Note: Logger might not be available yet, so LoadConfiguration will handle that
+  LoadConfiguration;
 end;
 
 destructor TCopilotBridge.Destroy;
@@ -795,28 +847,63 @@ var
   Value: TJSONValue;
 begin
   ConfigPath := TPath.Combine(TPath.GetDocumentsPath, CONFIG_FILE_NAME);
+  LogDebug('LoadConfiguration: Config path = ' + ConfigPath);
+  LogDebug('LoadConfiguration: Logger available = ' + BoolToStr(GlobalLogger <> nil, True));
   
   if TFile.Exists(ConfigPath) then
   begin
+    LogDebug('LoadConfiguration: Config file exists, loading...');
     try
       ConfigContent := TFile.ReadAllText(ConfigPath);
+      LogDebug('LoadConfiguration: Config content = ' + ConfigContent);
+      
       ConfigObj := TJSONObject.ParseJSONValue(ConfigContent) as TJSONObject;
       if ConfigObj <> nil then
       begin
+        LogDebug('LoadConfiguration: Config parsed successfully');
         try
           if ConfigObj.TryGetValue('api_endpoint', Value) then
+          begin
             FAPIEndpoint := Value.Value;
+            LogDebug('LoadConfiguration: Loaded api_endpoint = ' + FAPIEndpoint);
+          end;
           if ConfigObj.TryGetValue('request_timeout', Value) then
+          begin
             FRequestTimeout := Value.AsType<Integer>;
+            LogDebug('LoadConfiguration: Loaded request_timeout = ' + IntToStr(FRequestTimeout));
+          end;
           if ConfigObj.TryGetValue('retry_attempts', Value) then
+          begin
             FRetryAttempts := Value.AsType<Integer>;
+            LogDebug('LoadConfiguration: Loaded retry_attempts = ' + IntToStr(FRetryAttempts));
+          end;
+            
+          // Load GitHub credentials from configuration
+          FConfiguration.Free;
+          FConfiguration := ConfigObj.Clone as TJSONObject;
+          
+          LogDebug('LoadConfiguration: Username = ' + FConfiguration.GetValue<string>('username', ''));
+          LogDebug('LoadConfiguration: Token present = ' + BoolToStr(FConfiguration.GetValue<string>('token', '') <> '', True));
+          
         finally
           ConfigObj.Free;
         end;
+      end
+      else
+      begin
+        LogWarning('LoadConfiguration: Failed to parse config JSON');
       end;
     except
-      // Ignore configuration loading errors and use defaults
+      on E: Exception do
+      begin
+        LogError('LoadConfiguration: Exception: ' + E.Message);
+        // Ignore configuration loading errors and use defaults
+      end;
     end;
+  end
+  else
+  begin
+    LogInfo('LoadConfiguration: Config file does not exist, using defaults');
   end;
 end;
 
@@ -826,6 +913,7 @@ var
   ConfigObj: TJSONObject;
 begin
   ConfigPath := TPath.Combine(TPath.GetDocumentsPath, CONFIG_FILE_NAME);
+  LogDebug('SaveConfiguration: Starting, config path = ' + ConfigPath);
   
   ConfigObj := TJSONObject.Create;
   try
@@ -833,14 +921,36 @@ begin
     ConfigObj.AddPair('request_timeout', TJSONNumber.Create(FRequestTimeout));
     ConfigObj.AddPair('retry_attempts', TJSONNumber.Create(FRetryAttempts));
     
+    // Save GitHub credentials if available
+    if FConfiguration <> nil then
+    begin
+      ConfigObj.AddPair('username', FConfiguration.GetValue<string>('username', ''));
+      ConfigObj.AddPair('token', FConfiguration.GetValue<string>('token', ''));
+      LogDebug('SaveConfiguration: Saving username = ' + FConfiguration.GetValue<string>('username', ''));
+      LogDebug('SaveConfiguration: Saving token present = ' + BoolToStr(FConfiguration.GetValue<string>('token', '') <> '', True));
+    end
+    else
+    begin
+      LogWarning('SaveConfiguration: FConfiguration is nil, saving empty credentials');
+      ConfigObj.AddPair('username', '');
+      ConfigObj.AddPair('token', '');
+    end;
+    
     try
+      LogDebug('SaveConfiguration: Writing to file: ' + ConfigObj.ToString);
       TFile.WriteAllText(ConfigPath, ConfigObj.ToString, TEncoding.UTF8);
+      LogDebug('SaveConfiguration: File write successful');
     except
-      // Ignore save errors
+      on E: Exception do
+      begin
+        LogError('SaveConfiguration: File write failed: ' + E.Message);
+      end;
     end;
   finally
     ConfigObj.Free;
   end;
+  
+  LogDebug('SaveConfiguration: Completed');
 end;
 
 function TCopilotBridge.ValidateConfiguration: Boolean;
@@ -873,8 +983,17 @@ begin
       // Initialize authentication service
       if FAuthService = nil then
       begin
-        // Create authentication service instance
-        FAuthService := TCopilotAuthenticationService.Create;
+        // Create authentication service instance with credentials from configuration
+        LogDebug('Initialize: Creating authentication service');
+        LogDebug('Initialize: Username from config: ' + FConfiguration.GetValue<string>('username', ''));
+        LogDebug('Initialize: Token present: ' + BoolToStr(FConfiguration.GetValue<string>('token', '') <> '', True));
+        
+        FAuthService := TCopilotAuthenticationService.Create(
+          FConfiguration.GetValue<string>('username', ''),
+          FConfiguration.GetValue<string>('token', ''));
+          
+        LogDebug('Initialize: Authentication service created, calling Authenticate');
+        FAuthService.Authenticate;
       end;
       
       FInitialized := True;
@@ -942,8 +1061,50 @@ begin
 end;
 
 function TCopilotBridge.IsAuthenticated: Boolean;
+var
+  CurrentUsername, CurrentToken: string;
 begin
-  Result := (FAuthService <> nil) and FAuthService.IsAuthenticated;
+  LogDebug('TCopilotBridge.IsAuthenticated: Checking authentication status');
+  
+  // Ensure configuration is loaded
+  if FConfiguration = nil then
+  begin
+    LogWarning('TCopilotBridge.IsAuthenticated: FConfiguration is nil, initializing');
+    FConfiguration := TJSONObject.Create;
+  end;
+  
+  // Get current credentials from configuration
+  CurrentUsername := FConfiguration.GetValue<string>('username', '');
+  CurrentToken := FConfiguration.GetValue<string>('token', '');
+  
+  LogDebug('TCopilotBridge.IsAuthenticated: Current config username=' + CurrentUsername + 
+    ', token present=' + BoolToStr(CurrentToken <> '', True));
+  
+  // If no credentials in config, suggest using settings dialog
+  if (CurrentUsername = '') or (CurrentToken = '') then
+  begin
+    LogInfo('TCopilotBridge.IsAuthenticated: No credentials found in configuration');
+    Result := False;
+    Exit;
+  end;
+  
+  if FAuthService = nil then
+  begin
+    LogDebug('TCopilotBridge.IsAuthenticated: FAuthService is nil, creating new one');
+    FAuthService := TCopilotAuthenticationService.Create(CurrentUsername, CurrentToken);
+  end;
+  
+  // Check if auth service has the current credentials
+  if (FAuthService.GetUsername <> CurrentUsername) or (FAuthService.GetToken <> CurrentToken) then
+  begin
+    LogDebug('TCopilotBridge.IsAuthenticated: Auth service has outdated credentials, updating...');
+    FAuthService.UpdateCredentials(CurrentUsername, CurrentToken);
+  end;
+  
+  Result := FAuthService.IsAuthenticated;
+  LogDebug('TCopilotBridge.IsAuthenticated: Result=' + BoolToStr(Result, True) + 
+    ', Username=' + FAuthService.GetUsername + 
+    ', HasToken=' + BoolToStr(FAuthService.GetToken <> '', True));
 end;
 
 procedure TCopilotBridge.SignOut;
@@ -956,6 +1117,10 @@ procedure TCopilotBridge.SetConfiguration(const Config: TJSONObject);
 var
   Value: TJSONValue;
 begin
+  LogDebug('SetConfiguration: Starting');
+  LogDebug('SetConfiguration: Input config username = ' + Config.GetValue<string>('username', ''));
+  LogDebug('SetConfiguration: Input config token present = ' + BoolToStr(Config.GetValue<string>('token', '') <> '', True));
+  
   FLock.Enter;
   try
     if Config.TryGetValue('api_endpoint', Value) then
@@ -967,11 +1132,24 @@ begin
     if Config.TryGetValue('retry_attempts', Value) then
       FRetryAttempts := Value.AsType<Integer>;
       
+    // Update configuration object
+    LogDebug('SetConfiguration: Updating configuration object');
+    FConfiguration.Free;
+    FConfiguration := Config.Clone as TJSONObject;
+    
+    LogDebug('SetConfiguration: New username = ' + FConfiguration.GetValue<string>('username', ''));
+    LogDebug('SetConfiguration: New token present = ' + BoolToStr(FConfiguration.GetValue<string>('token', '') <> '', True));
+    
     // Update HTTP client timeout
     if FHttpClient <> nil then
       FHttpClient.SendTimeout := FRequestTimeout;
       
+    // Note: Authentication service will be updated automatically when needed
+    // by IsAuthenticated() and CreateChatSession() methods
+      
+    LogDebug('SetConfiguration: Saving configuration');
     SaveConfiguration;
+    LogDebug('SetConfiguration: Completed');
   finally
     FLock.Leave;
   end;
@@ -987,6 +1165,13 @@ begin
     Result.AddPair('retry_attempts', TJSONNumber.Create(FRetryAttempts));
     Result.AddPair('initialized', TJSONBool.Create(FInitialized));
     Result.AddPair('authenticated', TJSONBool.Create(IsAuthenticated));
+    
+    // Add GitHub credentials if available
+    if FConfiguration <> nil then
+    begin
+      Result.AddPair('username', FConfiguration.GetValue<string>('username', ''));
+      Result.AddPair('token', FConfiguration.GetValue<string>('token', ''));
+    end;
   finally
     FLock.Leave;
   end;
@@ -1009,25 +1194,63 @@ end;
 
 function TCopilotBridge.CreateChatSession: ICopilotChatSession;
 begin
+  LogDebug('CreateChatSession: Starting');
+  
   if not FInitialized then
   begin
+    LogError('CreateChatSession: Bridge not initialized');
     FLastError := 'Bridge not initialized';
     Result := nil;
     Exit;
   end;
   
+  LogDebug('CreateChatSession: Ensuring authentication service is up to date');
+  
+  // Ensure authentication service has the latest credentials from configuration
+  if (FAuthService = nil) or 
+     (FAuthService.GetUsername <> FConfiguration.GetValue<string>('username', '')) or
+     (FAuthService.GetToken <> FConfiguration.GetValue<string>('token', '')) then
+  begin
+    LogDebug('CreateChatSession: Recreating authentication service with current credentials');
+    FreeAndNil(FAuthService);
+    
+    FAuthService := TCopilotAuthenticationService.Create(
+      FConfiguration.GetValue<string>('username', ''),
+      FConfiguration.GetValue<string>('token', ''));
+  end;
+  
+  LogDebug('CreateChatSession: Checking authentication');
+  
+  // Try to authenticate first if we haven't already
   if not IsAuthenticated then
   begin
-    FLastError := 'Not authenticated';
+    LogInfo('CreateChatSession: Not authenticated, attempting to authenticate');
+    if not Authenticate then
+    begin
+      LogError('CreateChatSession: Authentication failed: ' + FLastError);
+      FLastError := 'Please authenticate with GitHub Copilot first.';
+      Result := nil;
+      Exit;
+    end;
+  end;
+  
+  if not IsAuthenticated then
+  begin
+    LogError('CreateChatSession: Still not authenticated after authenticate call');
+    FLastError := 'Please authenticate with GitHub Copilot first.';
     Result := nil;
     Exit;
   end;
   
+  LogInfo('CreateChatSession: Authentication successful, creating session');
+  
   try
     Result := TCopilotChatSession.Create(FAuthService, FAPIEndpoint, FRequestTimeout);
+    LogDebug('CreateChatSession: Session created successfully');
   except
     on E: Exception do
     begin
+      LogError('CreateChatSession: Failed to create chat session: ' + E.Message);
       FLastError := 'Failed to create chat session: ' + E.Message;
       Result := nil;
     end;
@@ -1084,7 +1307,7 @@ begin
   begin
     LogError('SendChatMessageAsync: Failed to create session: ' + FLastError);
     // Send error callback safely
-    TThread.Queue(nil, 
+    TThread.Synchronize(nil, 
       procedure
       var
         ErrorResponse: TCopilotResponse;
@@ -1122,21 +1345,72 @@ var
   NewConfig: TJSONObject;
   Config: TJSONObject;
 begin
-  Config := GetConfiguration;
-  SettingsForm := TfrmCopilotSettings.CreateSettings(nil, Config.GetValue<string>('username', ''), Config.GetValue<string>('token', ''));
+  LogDebug('ShowSettingsDialog: Starting');
+  
   try
-    if SettingsForm.ShowModal = mrOk then
-    begin
-      NewConfig := SettingsForm.GetGithubConfig;
-      try
-        SetConfiguration(NewConfig);
-      finally
-        NewConfig.Free;
+    Config := GetConfiguration;
+    LogDebug('ShowSettingsDialog: Current username = ' + Config.GetValue<string>('username', ''));
+    LogDebug('ShowSettingsDialog: Current token present = ' + BoolToStr(Config.GetValue<string>('token', '') <> '', True));
+    
+    SettingsForm := TfrmCopilotSettings.CreateSettings(nil, Config.GetValue<string>('username', ''), Config.GetValue<string>('token', ''));
+    try
+      LogDebug('ShowSettingsDialog: About to show modal dialog');
+      if SettingsForm.ShowModal = mrOk then
+      begin
+        LogDebug('ShowSettingsDialog: User clicked OK, getting new config');
+        try
+          NewConfig := SettingsForm.GetGithubConfig;
+          if NewConfig <> nil then
+          begin
+            LogDebug('ShowSettingsDialog: New username = ' + NewConfig.GetValue<string>('username', ''));
+            LogDebug('ShowSettingsDialog: New token present = ' + BoolToStr(NewConfig.GetValue<string>('token', '') <> '', True));
+            
+            LogDebug('ShowSettingsDialog: About to call SetConfiguration');
+            SetConfiguration(NewConfig);
+            LogInfo('ShowSettingsDialog: Configuration updated successfully');
+            
+            // Free NewConfig here since we're done with it
+            try
+              NewConfig.Free;
+            except
+              on E: Exception do
+                LogError('ShowSettingsDialog: Exception freeing NewConfig: ' + E.Message);
+            end;
+          end
+          else
+          begin
+            LogError('ShowSettingsDialog: NewConfig is nil!');
+          end;
+        except
+          on E: Exception do
+          begin
+            LogError('ShowSettingsDialog: Exception during configuration update: ' + E.Message);
+            // Free NewConfig if it was created but an exception occurred
+            if Assigned(NewConfig) then
+            begin
+              try
+                NewConfig.Free;
+              except
+                on E2: Exception do
+                  LogError('ShowSettingsDialog: Exception freeing NewConfig after error: ' + E2.Message);
+              end;
+            end;
+          end;
+        end;
+      end
+      else
+      begin
+        LogDebug('ShowSettingsDialog: User cancelled');
       end;
+    finally
+      SettingsForm.Free;
+      Config.Free;
     end;
-  finally
-    SettingsForm.Free;
-    Config.Free;
+  except
+    on E: Exception do
+    begin
+      LogError('ShowSettingsDialog: Exception in ShowSettingsDialog: ' + E.Message);
+    end;
   end;
 end;
 

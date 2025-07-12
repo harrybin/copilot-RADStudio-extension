@@ -87,6 +87,7 @@ type
     procedure RefreshChatHistory;
     procedure SetCodeContext(const Context: string);
     procedure SendMessage(const Message: string);
+    procedure ReloadConfiguration;
     
     // Properties
     property CopilotBridge: ICopilotBridge read FCopilotBridge;
@@ -480,6 +481,9 @@ begin
             FCoreService.SetConfigValue('github_token', NewConfig.GetValue('token').Value);
             AddChatMessage('Settings updated successfully.', 'system');
             
+            // IMPORTANT: Reload the bridge configuration to pick up new credentials
+            ReloadConfiguration;
+            
             // Update display to reflect any changes
             UpdateStatusDisplay;
           end
@@ -578,6 +582,93 @@ end;
 procedure TCopilotChatPanel.miRefactorCodeClick(Sender: TObject);
 begin
   SendMessage('Please suggest refactoring opportunities for the current code.');
+end;
+
+procedure TCopilotChatPanel.ReloadConfiguration;
+var
+  BridgeFactory: ICopilotBridgeFactory;
+  OldBridge: ICopilotBridge;
+  CoreConfig: TJSONObject;
+  BridgeConfig: TJSONObject;
+  GitHubUsername, GitHubToken: string;
+begin
+  if not Assigned(FCopilotBridge) then
+    Exit;
+    
+  try
+    Log(llInfo, 'Reloading bridge configuration...');
+    
+    // Keep a reference to the old bridge
+    OldBridge := FCopilotBridge;
+    
+    // Create a new bridge instance that will load the updated configuration
+    BridgeFactory := TCopilotBridgeFactory.Create;
+    FCopilotBridge := BridgeFactory.CreateBridge;
+    
+    if Assigned(FCopilotBridge) then
+    begin
+      // CRITICAL: Transfer credentials from Core service to Bridge configuration
+      // The Core service stores credentials as "github_username" and "github_token"
+      // but the Bridge expects "username" and "token"
+      if Assigned(FCoreService) then
+      begin
+        CoreConfig := FCoreService.GetConfiguration;
+        try
+          // Get credentials from Core service
+          GitHubUsername := '';
+          GitHubToken := '';
+          
+          if CoreConfig.GetValue('github_username') <> nil then
+            GitHubUsername := CoreConfig.GetValue('github_username').Value;
+          if CoreConfig.GetValue('github_token') <> nil then
+            GitHubToken := CoreConfig.GetValue('github_token').Value;
+          
+          Log(llInfo, 'Transferring credentials to bridge: username=' + GitHubUsername + 
+            ', token_present=' + BoolToStr(GitHubToken <> '', True));
+          
+          // Create bridge configuration with the correct key names
+          if (GitHubUsername <> '') or (GitHubToken <> '') then
+          begin
+            BridgeConfig := TJSONObject.Create;
+            try
+              BridgeConfig.AddPair('username', GitHubUsername);
+              BridgeConfig.AddPair('token', GitHubToken);
+              
+              // Set the configuration on the bridge BEFORE initializing
+              FCopilotBridge.SetConfiguration(BridgeConfig);
+              Log(llInfo, 'Bridge configuration updated with Core service credentials');
+            finally
+              BridgeConfig.Free;
+            end;
+          end;
+        finally
+          CoreConfig.Free;
+        end;
+      end;
+      
+      // Initialize the bridge after setting configuration
+      FCopilotBridge.Initialize;
+      Log(llInfo, 'Bridge configuration reloaded successfully');
+      
+      // Clear the old session since we have a new bridge
+      if Assigned(FChatSession) then
+      begin
+        FChatSession := nil; // Will be recreated on next message
+      end;
+    end
+    else
+    begin
+      // If new bridge creation failed, restore the old one
+      FCopilotBridge := OldBridge;
+      Log(llError, 'Failed to reload bridge configuration');
+    end;
+    
+  except
+    on E: Exception do
+    begin
+      Log(llError, 'Exception during configuration reload: ' + E.Message);
+    end;
+  end;
 end;
 
 end.

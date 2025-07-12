@@ -603,14 +603,23 @@ function TCopilotChatSession.SendMessageAsync(const Message: string;
   const Context: TCopilotCodeContext; const Callback: ICopilotBridgeCallback): Boolean;
 var
   WeakCallback: ICopilotBridgeCallback;
+  SelfRef: ICopilotChatSession;
 begin
+  LogDebug('TCopilotChatSession.SendMessageAsync: Starting');
   Result := False;
   
   if Callback = nil then
+  begin
+    LogWarning('TCopilotChatSession.SendMessageAsync: Callback is nil');
     Exit;
+  end;
     
   // Keep a weak reference to avoid circular references
   WeakCallback := Callback;
+  
+  // CRITICAL: Keep a strong reference to self to prevent destruction during async operation
+  SelfRef := Self as ICopilotChatSession;
+  LogDebug('TCopilotChatSession.SendMessageAsync: Self reference acquired');
     
   // Use TTask with proper synchronization to avoid access violations
   TTask.Run(
@@ -618,21 +627,31 @@ begin
     var
       Response: TCopilotResponse;
       LocalCallback: ICopilotBridgeCallback;
+      LocalSelf: ICopilotChatSession;
     begin
       LogDebug('SendMessageAsync: Task started');
       
-      // Copy the callback reference for thread safety
+      // Keep local references for thread safety
       LocalCallback := WeakCallback;
+      LocalSelf := SelfRef; // This prevents the session from being destroyed
+      
       if LocalCallback = nil then
       begin
         LogWarning('SendMessageAsync: LocalCallback is nil, exiting');
+        LocalSelf := nil; // Release reference
+        Exit;
+      end;
+      
+      if LocalSelf = nil then
+      begin
+        LogError('SendMessageAsync: LocalSelf is nil, exiting');
         Exit;
       end;
         
       try
         LogDebug('SendMessageAsync: Calling SendMessage');
         // Call the synchronous SendMessage in the background thread
-        Response := SendMessage(Message, Context);
+        Response := (LocalSelf as TCopilotChatSession).SendMessage(Message, Context);
         LogDebug('SendMessageAsync: SendMessage completed, status: ' + IntToStr(Ord(Response.Status)));
         
         // Use TThread.Queue instead of Synchronize for better performance
@@ -676,9 +695,14 @@ begin
             end);
         end;
       end;
+      
+      // Release the self reference to allow proper cleanup
+      LocalSelf := nil;
+      LogDebug('SendMessageAsync: Task completed, self reference released');
     end);
   
   Result := True;
+  LogDebug('TCopilotChatSession.SendMessageAsync: Completed');
 end;
 
 function TCopilotChatSession.GetChatHistory: TArray<TCopilotChatMessage>;
@@ -1043,16 +1067,22 @@ var
   CopilotContext: TCopilotCodeContext;
   WeakCallback: ICopilotBridgeCallback;
 begin
+  LogDebug('SendChatMessageAsync: Starting');
   Result := False;
   
   if Callback = nil then
+  begin
+    LogWarning('SendChatMessageAsync: Callback is nil');
     Exit;
+  end;
     
   WeakCallback := Callback;
+  LogDebug('SendChatMessageAsync: Creating chat session');
     
   Session := CreateChatSession;
   if Session = nil then
   begin
+    LogError('SendChatMessageAsync: Failed to create session: ' + FLastError);
     // Send error callback safely
     TThread.Queue(nil, 
       procedure
@@ -1074,12 +1104,16 @@ begin
     Exit;
   end;
   
+  LogDebug('SendChatMessageAsync: Session created successfully');
+  
   // Parse context if provided
   FillChar(CopilotContext, SizeOf(CopilotContext), 0);
   if Context <> '' then
     CopilotContext.SelectedText := Context;
-    
+  
+  // Keep a strong reference to the session in the async task
   Result := Session.SendMessageAsync(Message, CopilotContext, WeakCallback);
+  LogDebug('SendChatMessageAsync: Completed with result: ' + BoolToStr(Result, True));
 end;
 
 procedure TCopilotBridge.ShowSettingsDialog;

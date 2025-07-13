@@ -37,6 +37,8 @@ begin
   FStdInRead := 0;
   FStdOutWrite := 0;
   StartNodeProcess;
+  // Wait for LSP server to be ready (simple delay)
+  Sleep(2000); // Wait 2 seconds for Node.js server startup
 end;
 
 destructor TCopilotLSPClient.Destroy;
@@ -48,6 +50,32 @@ begin
   if FStdInRead <> 0 then CloseHandle(FStdInRead);
   if FStdOutWrite <> 0 then CloseHandle(FStdOutWrite);
   inherited Destroy;
+end;
+function TCopilotLSPClient.SendMessage(const Msg: string): string;
+var
+  Attempt: Integer;
+begin
+  Result := '';
+  for Attempt := 1 to 3 do
+  begin
+    OutputDebugString(PChar('CopilotLSPClient.SendMessage: Sending to stdin: ' + Msg));
+    if not WriteToStdin(Msg + #10) then
+      Exit('');
+    Result := ReadFromStdout;
+    if Result <> '' then Exit;
+    Sleep(500); // Wait before retry
+  end;
+  // If still empty after retries, return empty string
+end;
+
+procedure TCopilotLSPClient.DidOpenDocument(const Uri, LanguageId, Text: string);
+begin
+  // Stub implementation
+end;
+
+procedure TCopilotLSPClient.DidChangeDocument(const Uri, Text: string);
+begin
+  // Stub implementation
 end;
 procedure TCopilotLSPClient.StartNodeProcess;
 var
@@ -72,6 +100,7 @@ begin
   NodePath := 'node';
   ScriptPath := ExtensionDir + 'copilot-language-server.js';
   CmdLine := Format('"%s" "%s"', [NodePath, ScriptPath]);
+  OutputDebugString(PChar('CopilotLSPClient.StartNodeProcess: CmdLine = ' + CmdLine));
 
   ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
   StartupInfo.cb := SizeOf(StartupInfo);
@@ -82,7 +111,10 @@ begin
 
   ZeroMemory(@ProcessInfo, SizeOf(ProcessInfo));
   if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NO_WINDOW, nil, nil, StartupInfo, ProcessInfo) then
-    raise Exception.Create('Failed to start copilot-language-server.js process');
+  begin
+    OutputDebugString(PChar('CopilotLSPClient.StartNodeProcess: Failed to start process.'));
+    raise Exception.Create('Failed to start copilot-language-server.js process: ' + CmdLine);
+  end;
 
   FProcessHandle := ProcessInfo.hProcess;
 end;
@@ -115,36 +147,29 @@ var
   Buffer: array[0..4095] of AnsiChar;
   BytesRead: DWORD;
   S: string;
+  StartTime: Cardinal;
+  IsJSON: Boolean;
 begin
   Result := '';
   if FStdOutRead = 0 then Exit;
-  S := '';
-  if ReadFile(FStdOutRead, Buffer, SizeOf(Buffer), BytesRead, nil) and (BytesRead > 0) then
-    SetString(S, Buffer, BytesRead);
-  Result := Trim(S);
-end;
-
-function TCopilotLSPClient.SendMessage(const Msg: string): string;
-begin
-  if not WriteToStdin(Msg + #10) then
-    Exit('');
-  Result := ReadFromStdout;
-end;
-
-procedure TCopilotLSPClient.DidOpenDocument(const Uri, LanguageId, Text: string);
-var
-  Msg: string;
-begin
-  Msg := '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"' + Uri + '","languageId":"' + LanguageId + '","version":1,"text":"' + Text + '"}}}';
-  SendMessage(Msg);
-end;
-
-procedure TCopilotLSPClient.DidChangeDocument(const Uri, Text: string);
-var
-  Msg: string;
-begin
-  Msg := '{"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":"' + Uri + '","version":2},"contentChanges":[{"text":"' + Text + '"}]}}';
-  SendMessage(Msg);
+  StartTime := GetTickCount;
+  repeat
+    S := '';
+    if ReadFile(FStdOutRead, Buffer, SizeOf(Buffer), BytesRead, nil) and (BytesRead > 0) then
+      SetString(S, Buffer, BytesRead);
+    S := Trim(S);
+    // Check if S looks like JSON (starts with '{' or '[')
+    IsJSON := (S <> '') and ((S[1] = '{') or (S[1] = '['));
+    if IsJSON then
+    begin
+      Result := S;
+      Exit;
+    end;
+    // If not JSON, ignore and keep reading until timeout (5 seconds)
+    if (GetTickCount - StartTime) > 5000 then
+      Exit('');
+    Sleep(100);
+  until False;
 end;
 
 procedure TCopilotLSPClient.DidCloseDocument(const Uri: string);
@@ -153,43 +178,6 @@ var
 begin
   Msg := '{"jsonrpc":"2.0","method":"textDocument/didClose","params":{"textDocument":{"uri":"' + Uri + '"}}}';
   SendMessage(Msg);
-end;
-
-end.
-  if not WriteToStdin(Msg + #10) then
-    Exit('');
-  Result := ReadFromStdout;
-end;
-
-function TCopilotLSPClient.WriteToStdin(const Data: string): Boolean;
-begin
-  // TODO: Implement writing to stdin pipe
-  Result := True;
-end;
-
-
-procedure TCopilotLSPClient.Initialize;
-var
-  OutputDir, NodeModulesPath, PackagePath: string;
-begin
-  // Determine output directory (where DLL and JS are located)
-  OutputDir := ExtractFilePath(ParamStr(0));
-  NodeModulesPath := OutputDir + 'node_modules';
-  PackagePath := NodeModulesPath + '\@githubnext\copilot-language-server';
-
-  // Check if copilot-language-server package is installed
-  if not DirectoryExists(PackagePath) then
-  begin
-    // Run npm install @githubnext/copilot-language-server in output dir
-    WinExec(PAnsiChar('cmd /c npm install @githubnext/copilot-language-server'), SW_HIDE);
-    // Optionally: Wait for install to complete (could poll for directory)
-  end;
-  // ...existing code...
-end;
-
-procedure TCopilotLSPClient.Shutdown;
-begin
-  // TODO: Implement cleanup
 end;
 
 end.

@@ -96,10 +96,15 @@ try {
 
 if (alreadyRunning) {
   log(
-    "Not starting CopilotLanguageServer: already running with correct parameters."
+    "Not starting CopilotLanguageServer: already running with correct parameters. Exiting."
   );
+  process.exit(0);
 } else {
   const CopilotLanguageServer = ensureCopilotLanguageServer();
+  log(
+    "Result of require('@github/copilot-language-server'): " +
+      JSON.stringify(CopilotLanguageServer)
+  );
   if (
     CopilotLanguageServer &&
     typeof CopilotLanguageServer.run === "function"
@@ -134,6 +139,9 @@ if (alreadyRunning) {
     };
     CopilotLanguageServer.run();
   } else {
-    log("CopilotLanguageServer.run is not a function or server not loaded");
+    log(
+      "CopilotLanguageServer.run is not a function or server not loaded. Exiting."
+    );
+    process.exit(1);
   }
 }

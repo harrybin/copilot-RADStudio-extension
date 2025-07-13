@@ -731,9 +731,9 @@ var
   ExtensionDir: string;
 begin
   // Find extension directory
-  ExtensionDir := ExtractFilePath(ParamStr(0));
+  // Use the directory of the extension DLL, not the RAD Studio bin
+  ExtensionDir := ExtractFilePath(GetModuleName(HInstance));
   NodePath := 'node'; // Assumes node is installed and in PATH
-  // Place copilot-language-server.js next to the DLL (extension binary)
   ServerScriptPath := ExtensionDir + 'copilot-language-server.js';
   CmdLine := Format('"%s" "%s"', [NodePath, ServerScriptPath]);
   ZeroMemory(@StartupInfo, SizeOf(StartupInfo));

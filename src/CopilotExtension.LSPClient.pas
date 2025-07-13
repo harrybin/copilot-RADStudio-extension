@@ -11,8 +11,11 @@ type
     FProcessHandle: THandle;
     FStdInWrite: THandle;
     FStdOutRead: THandle;
+    FStdInRead: THandle;
+    FStdOutWrite: THandle;
     function WriteToStdin(const Data: string): Boolean;
     function ReadFromStdout: string;
+    procedure StartNodeProcess;
   public
     constructor Create;
     destructor Destroy; override;
@@ -28,11 +31,60 @@ implementation
 constructor TCopilotLSPClient.Create;
 begin
   inherited Create;
+  FProcessHandle := 0;
+  FStdInWrite := 0;
+  FStdOutRead := 0;
+  FStdInRead := 0;
+  FStdOutWrite := 0;
+  StartNodeProcess;
 end;
 
 destructor TCopilotLSPClient.Destroy;
 begin
+  if FProcessHandle <> 0 then
+    TerminateProcess(FProcessHandle, 0);
+  if FStdInWrite <> 0 then CloseHandle(FStdInWrite);
+  if FStdOutRead <> 0 then CloseHandle(FStdOutRead);
+  if FStdInRead <> 0 then CloseHandle(FStdInRead);
+  if FStdOutWrite <> 0 then CloseHandle(FStdOutWrite);
   inherited Destroy;
+end;
+procedure TCopilotLSPClient.StartNodeProcess;
+var
+  StartupInfo: TStartupInfo;
+  ProcessInfo: TProcessInformation;
+  Security: TSecurityAttributes;
+  NodePath, ScriptPath, CmdLine: string;
+  ExtensionDir: string;
+begin
+  Security.nLength := SizeOf(Security);
+  Security.bInheritHandle := True;
+  Security.lpSecurityDescriptor := nil;
+
+  // Create pipes for stdin/stdout
+  if not CreatePipe(FStdInRead, FStdInWrite, @Security, 0) then
+    raise Exception.Create('Failed to create stdin pipe');
+  if not CreatePipe(FStdOutRead, FStdOutWrite, @Security, 0) then
+    raise Exception.Create('Failed to create stdout pipe');
+
+  // Use the directory of the extension DLL, not the RAD Studio bin
+  ExtensionDir := ExtractFilePath(GetModuleName(HInstance));
+  NodePath := 'node';
+  ScriptPath := ExtensionDir + 'copilot-language-server.js';
+  CmdLine := Format('"%s" "%s"', [NodePath, ScriptPath]);
+
+  ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
+  StartupInfo.cb := SizeOf(StartupInfo);
+  StartupInfo.dwFlags := STARTF_USESTDHANDLES;
+  StartupInfo.hStdInput := FStdInRead;
+  StartupInfo.hStdOutput := FStdOutWrite;
+  StartupInfo.hStdError := FStdOutWrite;
+
+  ZeroMemory(@ProcessInfo, SizeOf(ProcessInfo));
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NO_WINDOW, nil, nil, StartupInfo, ProcessInfo) then
+    raise Exception.Create('Failed to start copilot-language-server.js process');
+
+  FProcessHandle := ProcessInfo.hProcess;
 end;
 
 procedure TCopilotLSPClient.Initialize;
@@ -48,12 +100,14 @@ end;
 function TCopilotLSPClient.WriteToStdin(const Data: string): Boolean;
 var
   BytesWritten: DWORD;
+  DataAnsi: AnsiString;
 begin
   Result := False;
   if FStdInWrite = 0 then Exit;
-  if not WriteFile(FStdInWrite, PAnsiChar(AnsiString(Data))^, Length(Data), BytesWritten, nil) then
+  DataAnsi := AnsiString(Data);
+  if not WriteFile(FStdInWrite, Pointer(DataAnsi)^, Length(DataAnsi), BytesWritten, nil) then
     Exit;
-  Result := BytesWritten = Length(Data);
+  Result := BytesWritten = Length(DataAnsi);
 end;
 
 function TCopilotLSPClient.ReadFromStdout: string;

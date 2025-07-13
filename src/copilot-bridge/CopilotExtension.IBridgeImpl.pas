@@ -526,15 +526,15 @@ function TCopilotChatSession.SendMessage(const Message: string;
   const Context: TCopilotCodeContext): TCopilotResponse;
 var
   RequestBody: TJSONObject;
-  ResponseContent: string;
   UserMsg, AssistantMsg: TCopilotChatMessage;
+  LSPRequest: string;
+  LSPResponse: string;
 begin
   LogDebug('SendMessage: Starting with message: ' + Copy(Message, 1, 50) + '...');
   FillChar(Result, SizeOf(Result), 0);
   Result.Status := crsError;
   try
     LogDebug('SendMessage: Building API request');
-    // Build API request
     RequestBody := BuildAPIRequest(Message, Context);
     if RequestBody = nil then
     begin
@@ -543,29 +543,25 @@ begin
       Exit;
     end;
     try
-      LogDebug('SendMessage: Sending LSP request');
-      // TODO: Send request via LSP client
-      ResponseContent := '';
-      LogDebug('SendMessage: LSP request completed, response length: ' + IntToStr(Length(ResponseContent)));
-      
-      LogDebug('SendMessage: Parsing API response');
-      // Parse response
-      Result := ParseAPIResponse(ResponseContent);
+      LSPRequest := RequestBody.ToString;
+      LogDebug('SendMessage: Sending LSP request via FLSPClient');
+      // Send request to LSP server via FLSPClient
+      FLSPClient.SendMessage(LSPRequest);
+      // TODO: Implement synchronous response handling from LSP server
+      LSPResponse := '';
+      LogDebug('SendMessage: LSP request sent, waiting for response');
+      // For now, simulate response (integration required)
+      Result := ParseAPIResponse(LSPResponse);
       LogInfo('SendMessage: Response status: ' + IntToStr(Ord(Result.Status)));
-      
-      // Add messages to history if successful
       if Result.Status = crsSuccess then
       begin
         LogDebug('SendMessage: Adding messages to history');
         FLock.Enter;
         try
-          // Add user message
           UserMsg.Role := 'user';
           UserMsg.Content := Message;
           UserMsg.Timestamp := Now;
           FMessages.Add(UserMsg);
-          
-          // Add assistant response
           AssistantMsg.Role := 'assistant';
           AssistantMsg.Content := Result.Content;
           AssistantMsg.Timestamp := Now;
@@ -579,7 +575,6 @@ begin
       begin
         LogWarning('SendMessage: Request failed with error: ' + Result.ErrorMessage);
       end;
-      
     finally
       LogDebug('SendMessage: Freeing request body');
       RequestBody.Free;
@@ -592,7 +587,6 @@ begin
       Result.ErrorMessage := E.Message;
     end;
   end;
-  
   LogDebug('SendMessage: Completed');
 end;
 
@@ -652,7 +646,7 @@ begin
         LogDebug('SendMessageAsync: SendMessage completed, status: ' + IntToStr(Ord(Response.Status)));
         
         // Use TThread.Synchronize for thread-safe UI callbacks
-        TThread.Synchronize(nil,
+        TThread.Synchronize(TThread.CurrentThread,
           procedure
           begin
             try
@@ -676,7 +670,7 @@ begin
           Response.ErrorMessage := 'SendMessageAsync error: ' + E.Message;
           
           // Queue the error callback as well
-          TThread.Synchronize(nil,
+          TThread.Synchronize(TThread.CurrentThread,
             procedure
             begin
               try

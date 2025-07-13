@@ -8,7 +8,6 @@ uses
 type
   TCopilotLSPClient = class(TObject)
   private
-    procedure SendMessage(const Msg: string);
     function WriteToStdin(const Data: string): Boolean;
   public
     constructor Create;
@@ -18,6 +17,7 @@ type
     procedure DidOpenDocument(const Uri, LanguageId, Text: string);
     procedure DidChangeDocument(const Uri, Text: string);
     procedure DidCloseDocument(const Uri: string);
+    procedure SendMessage(const Msg: string);
   end;
 
 implementation

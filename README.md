@@ -1,3 +1,44 @@
+# Copilot LSP Server Setup (RAD Studio Extension)
+
+## Required Node.js Package
+
+- The extension requires the official Copilot LSP server package:
+  ```
+  @github/copilot-language-server
+  ```
+
+## Installation Steps
+
+- The extension will attempt to auto-install the package in the output directory at runtime.
+- If auto-install fails (e.g., due to missing `package.json`, network, or permissions), you must install manually:
+
+  ```shell
+  cd d:\harrybin\copilot-RADStudio-extension\build\output
+  npm init -y
+  npm install @github/copilot-language-server
+  ```
+
+## Troubleshooting
+
+- If you see errors about missing modules or failed installs:
+  - Check the log file: `copilot-lsp-server.log` (same directory as the JS file).
+  - Review npm error logs in your user profile:  
+    `C:\Users\<YourUser>\AppData\Local\npm-cache\_logs\...`
+  - Common issues:
+    - No `package.json` in output directory (run `npm init -y`)
+    - Network or proxy issues (check npm config)
+    - Permissions (run terminal as administrator if needed)
+
+## Runtime Diagnostics
+
+- All startup, install, and error events are logged to `copilot-lsp-server.log`.
+- If the Node.js process exits with code 1, check the log for stack traces and error details.
+
+## Manual Deployment
+
+- If auto-install is not desired, you can pre-install the package in the output directory before running the extension.
+
+Once installation completes, the extension will start the Copilot LSP server and route chat requests through it.
 # Copilot Extension for RAD Studio by harrybin
 
 A RAD Studio IDE extension that integrates GitHub Copilot's conversational AI assistance directly into the RAD Studio IDE environment using the IDE Tools API.

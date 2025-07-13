@@ -100,48 +100,8 @@ if (alreadyRunning) {
   );
   process.exit(0);
 } else {
-  const CopilotLanguageServer = ensureCopilotLanguageServer();
   log(
-    "Result of require('@github/copilot-language-server'): " +
-      JSON.stringify(CopilotLanguageServer)
+    "This script is a stub. The Copilot Language Server must be launched as a Node.js process using dist/language-server.js with --stdio. Exiting."
   );
-  if (
-    CopilotLanguageServer &&
-    typeof CopilotLanguageServer.run === "function"
-  ) {
-    const originalRun = CopilotLanguageServer.run;
-    CopilotLanguageServer.run = function (...args) {
-      log("CopilotLanguageServer.run called");
-      try {
-        if (this && typeof this.on === "function") {
-          this.on("request", (req) => {
-            log(
-              "CopilotLanguageServer received request: " + JSON.stringify(req)
-            );
-          });
-          this.on("response", (res) => {
-            log("CopilotLanguageServer sent response: " + JSON.stringify(res));
-          });
-          this.on("error", (err) => {
-            log(
-              "CopilotLanguageServer error: " +
-                (err && err.stack ? err.stack : err)
-            );
-          });
-        }
-        return originalRun.apply(this, args);
-      } catch (e) {
-        log(
-          "CopilotLanguageServer.run exception: " + (e && e.stack ? e.stack : e)
-        );
-        throw e;
-      }
-    };
-    CopilotLanguageServer.run();
-  } else {
-    log(
-      "CopilotLanguageServer.run is not a function or server not loaded. Exiting."
-    );
-    process.exit(1);
-  }
+  process.exit(0);
 }

@@ -734,9 +734,9 @@ var
 begin
   ExtensionDir := ExtractFilePath(GetModuleName(HInstance));
   NodePath := 'node'; // Assumes node is installed and in PATH
-  ServerScriptPath := ExtensionDir + 'copilot-language-server.js';
+  ServerScriptPath := ExtensionDir + 'node_modules\@github\copilot-language-server\dist\language-server.js';
   WorkingDir := ExtensionDir;
-  CmdLine := Format('"%s" "%s"', [NodePath, ServerScriptPath]);
+  CmdLine := Format('"%s" "%s" --stdio', [NodePath, ServerScriptPath]);
   ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
   ZeroMemory(@ProcessInfo, SizeOf(ProcessInfo));
   StartupInfo.cb := SizeOf(StartupInfo);
@@ -747,7 +747,7 @@ begin
     nil, PChar(WorkingDir), StartupInfo, ProcessInfo) then
   begin
     LastErr := GetLastError();
-    LogError('Failed to start copilot-language-server.js process.');
+    LogError('Failed to start copilot-language-server process.');
     LogError('Command line: ' + CmdLine);
     LogError('Working dir: ' + WorkingDir);
     LogError('GetLastError: ' + IntToStr(LastErr));

@@ -168,21 +168,30 @@ if errorlevel 1 (
     
     if ($BuildExitCode -eq 0) {
         Write-Host "Build completed successfully!" -ForegroundColor Green
-        
+
         # Copy outputs
         $BplFile = Join-Path $PackageDir "RADStudioCopilotExtension.bpl"
         $DcpFile = Join-Path $PackageDir "RADStudioCopilotExtension.dcp"
-        
+        $CopilotServerJs = Join-Path $ProjectRoot "src\copilot-bridge\copilot-language-server.js"
+
         if (Test-Path $BplFile) {
             Copy-Item $BplFile $OutputDir -Force
             Write-Host "Copied BPL to output directory"
         }
-        
+
         if (Test-Path $DcpFile) {
             Copy-Item $DcpFile $OutputDir -Force
             Write-Host "Copied DCP to output directory"
         }
-        
+
+        if (Test-Path $CopilotServerJs) {
+            Copy-Item $CopilotServerJs $OutputDir -Force
+            Write-Host "Copied copilot-language-server.js to output directory"
+        }
+        else {
+            Write-Warning "copilot-language-server.js not found at $CopilotServerJs"
+        }
+
         return $true
     }
     else {

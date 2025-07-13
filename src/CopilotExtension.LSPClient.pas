@@ -70,8 +70,22 @@ end;
 
 
 procedure TCopilotLSPClient.Initialize;
+var
+  OutputDir, NodeModulesPath, PackagePath: string;
 begin
-  // TODO: Implement LSP initialization
+  // Determine output directory (where DLL and JS are located)
+  OutputDir := ExtractFilePath(ParamStr(0));
+  NodeModulesPath := OutputDir + 'node_modules';
+  PackagePath := NodeModulesPath + '\@githubnext\copilot-language-server';
+
+  // Check if copilot-language-server package is installed
+  if not DirectoryExists(PackagePath) then
+  begin
+    // Run npm install @githubnext/copilot-language-server in output dir
+    WinExec(PAnsiChar('cmd /c npm install @githubnext/copilot-language-server'), SW_HIDE);
+    // Optionally: Wait for install to complete (could poll for directory)
+  end;
+  // ...existing code...
 end;
 
 procedure TCopilotLSPClient.Shutdown;

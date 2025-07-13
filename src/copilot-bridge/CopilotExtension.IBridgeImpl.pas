@@ -50,14 +50,16 @@ type
   private
     FSessionId: string;
     FLSPClient: TCopilotLSPClient;
+    FLSPProcessHandle: THandle;
+    FLSPProcessID: NativeInt;
     FAuthService: TCopilotAuthenticationService;
     FMessages: TList<TCopilotChatMessage>;
     FAPIEndpoint: string;
     FRequestTimeout: Integer;
     FLock: TCriticalSection;
-    
     function BuildAPIRequest(const Message: string; const Context: TCopilotCodeContext): TJSONObject;
     function ParseAPIResponse(const Response: string): TCopilotResponse;
+    procedure StartCopilotLSPServer;
   public
     constructor Create(const AuthService: TCopilotAuthenticationService; 
       const APIEndpoint: string; RequestTimeout: Integer);
@@ -262,6 +264,9 @@ begin
     FLock := TCriticalSection.Create;
     LogDebug('TCopilotChatSession.Create: Creating LSP client');
     FLSPClient := TCopilotLSPClient.Create;
+    FLSPProcessHandle := 0;
+    FLSPProcessID := 0;
+    StartCopilotLSPServer;
     LogDebug('TCopilotChatSession.Create: Constructor completed successfully');
   except
     on E: Exception do
@@ -276,11 +281,17 @@ destructor TCopilotChatSession.Destroy;
 begin
   LogDebug('TCopilotChatSession.Destroy: Starting destructor');
   try
+    if FLSPProcessHandle <> 0 then
+    begin
+      TerminateProcess(FLSPProcessHandle, 0);
+      CloseHandle(FLSPProcessHandle);
+      LogInfo('Copilot LSP server process terminated');
+    end;
     LogDebug('TCopilotChatSession.Destroy: Freeing FLSPClient');
     FreeAndNil(FLSPClient);
   except
     on E: Exception do
-      LogError('TCopilotChatSession.Destroy: Error freeing FLSPClient: ' + E.Message);
+      LogError('TCopilotChatSession.Destroy: Error freeing FLSPClient or terminating LSP process: ' + E.Message);
   end;
   try
     LogDebug('TCopilotChatSession.Destroy: Freeing FMessages');
@@ -721,8 +732,39 @@ begin
   Result := FSessionId;
 end;
 
-{ TCopilotBridge }
+procedure TCopilotChatSession.StartCopilotLSPServer;
+var
+  StartupInfo: TStartupInfo;
+  ProcessInfo: TProcessInformation;
+  NodePath, ServerScriptPath, CmdLine: string;
+  ExtensionDir: string;
+begin
+  // Find extension directory
+  ExtensionDir := ExtractFilePath(ParamStr(0));
+  NodePath := 'node'; // Assumes node is installed and in PATH
+  // Place copilot-language-server.js next to the DLL (extension binary)
+  ServerScriptPath := ExtensionDir + 'copilot-language-server.js';
+  CmdLine := Format('"%s" "%s"', [NodePath, ServerScriptPath]);
+  ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
+  ZeroMemory(@ProcessInfo, SizeOf(ProcessInfo));
+  StartupInfo.cb := SizeOf(StartupInfo);
+  if CreateProcess(nil, PChar(CmdLine), nil, nil, False, CREATE_NO_WINDOW, nil, nil, StartupInfo, ProcessInfo) then
+  begin
+    FLSPProcessHandle := ProcessInfo.hProcess;
+    FLSPProcessID := ProcessInfo.dwProcessId;
+    LogInfo('Copilot LSP server started, PID: ' + IntToStr(FLSPProcessID));
+    // Optionally: Wait for server to be ready, or connect via FLSPClient
+  end
+  else
+  begin
+    LogError('Failed to start copilot-language-server.js process');
+    FLSPProcessHandle := 0;
+    FLSPProcessID := 0;
+  end;
+end
 
+{ TCopilotBridge }
+;
 constructor TCopilotBridge.Create;
 begin
   inherited Create;
@@ -1234,7 +1276,7 @@ begin
   begin
     LogError('SendChatMessageAsync: Failed to create session: ' + FLastError);
     // Send error callback safely
-    TThread.Synchronize(nil, 
+    TThread.Synchronize(TThread.CurrentThread, 
       procedure
       var
         ErrorResponse: TCopilotResponse;

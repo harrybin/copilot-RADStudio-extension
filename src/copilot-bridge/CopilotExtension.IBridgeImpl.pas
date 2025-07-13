@@ -729,29 +729,35 @@ var
   ProcessInfo: TProcessInformation;
   NodePath, ServerScriptPath, CmdLine: string;
   ExtensionDir: string;
+  WorkingDir: string;
+  LastErr: DWORD;
 begin
-  // Find extension directory
-  // Use the directory of the extension DLL, not the RAD Studio bin
   ExtensionDir := ExtractFilePath(GetModuleName(HInstance));
   NodePath := 'node'; // Assumes node is installed and in PATH
   ServerScriptPath := ExtensionDir + 'copilot-language-server.js';
+  WorkingDir := ExtensionDir;
   CmdLine := Format('"%s" "%s"', [NodePath, ServerScriptPath]);
   ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
   ZeroMemory(@ProcessInfo, SizeOf(ProcessInfo));
   StartupInfo.cb := SizeOf(StartupInfo);
-  if CreateProcess(nil, PChar(CmdLine), nil, nil, False, CREATE_NO_WINDOW, nil, nil, StartupInfo, ProcessInfo) then
+  StartupInfo.dwFlags := STARTF_USESHOWWINDOW;
+  StartupInfo.wShowWindow := SW_HIDE;
+  // Use CREATE_NEW_CONSOLE for debugging, CREATE_NO_WINDOW for production
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, False, CREATE_NO_WINDOW,
+    nil, PChar(WorkingDir), StartupInfo, ProcessInfo) then
   begin
-    FLSPProcessHandle := ProcessInfo.hProcess;
-    FLSPProcessID := ProcessInfo.dwProcessId;
-    LogInfo('Copilot LSP server started, PID: ' + IntToStr(FLSPProcessID));
-    // Optionally: Wait for server to be ready, or connect via FLSPClient
-  end
-  else
-  begin
-    LogError('Failed to start copilot-language-server.js process');
+    LastErr := GetLastError();
+    LogError('Failed to start copilot-language-server.js process.');
+    LogError('Command line: ' + CmdLine);
+    LogError('Working dir: ' + WorkingDir);
+    LogError('GetLastError: ' + IntToStr(LastErr));
     FLSPProcessHandle := 0;
     FLSPProcessID := 0;
+    Exit;
   end;
+  FLSPProcessHandle := ProcessInfo.hProcess;
+  FLSPProcessID := ProcessInfo.dwProcessId;
+  LogInfo('Copilot LSP server started, PID: ' + IntToStr(FLSPProcessID));
 end
 
 { TCopilotBridge }

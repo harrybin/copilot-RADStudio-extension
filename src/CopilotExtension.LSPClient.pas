@@ -36,19 +36,24 @@ begin
   FStdOutRead := 0;
   FStdInRead := 0;
   FStdOutWrite := 0;
+  OutputDebugString('TCopilotLSPClient.Create: Starting Node.js process');
   StartNodeProcess;
-  // Wait for LSP server to be ready (simple delay)
+  OutputDebugString('TCopilotLSPClient.Create: Node.js process started, waiting for server to be ready');
   Sleep(2000); // Wait 2 seconds for Node.js server startup
 end;
 
 destructor TCopilotLSPClient.Destroy;
 begin
+  OutputDebugString('TCopilotLSPClient.Destroy: Cleaning up Node.js process and handles');
   if FProcessHandle <> 0 then
+  begin
     TerminateProcess(FProcessHandle, 0);
-  if FStdInWrite <> 0 then CloseHandle(FStdInWrite);
-  if FStdOutRead <> 0 then CloseHandle(FStdOutRead);
-  if FStdInRead <> 0 then CloseHandle(FStdInRead);
-  if FStdOutWrite <> 0 then CloseHandle(FStdOutWrite);
+    OutputDebugString('TCopilotLSPClient.Destroy: Node.js process terminated');
+  end;
+  if FStdInWrite <> 0 then begin CloseHandle(FStdInWrite); OutputDebugString('TCopilotLSPClient.Destroy: Closed FStdInWrite'); end;
+  if FStdOutRead <> 0 then begin CloseHandle(FStdOutRead); OutputDebugString('TCopilotLSPClient.Destroy: Closed FStdOutRead'); end;
+  if FStdInRead <> 0 then begin CloseHandle(FStdInRead); OutputDebugString('TCopilotLSPClient.Destroy: Closed FStdInRead'); end;
+  if FStdOutWrite <> 0 then begin CloseHandle(FStdOutWrite); OutputDebugString('TCopilotLSPClient.Destroy: Closed FStdOutWrite'); end;
   inherited Destroy;
 end;
 function TCopilotLSPClient.SendMessage(const Msg: string): string;
@@ -84,23 +89,38 @@ var
   Security: TSecurityAttributes;
   NodePath, ScriptPath, CmdLine: string;
   ExtensionDir: string;
+var
+  Success: Boolean;
 begin
   Security.nLength := SizeOf(Security);
   Security.bInheritHandle := True;
   Security.lpSecurityDescriptor := nil;
 
-  // Create pipes for stdin/stdout
-  if not CreatePipe(FStdInRead, FStdInWrite, @Security, 0) then
+  OutputDebugString('TCopilotLSPClient.StartNodeProcess: Creating stdin pipe');
+  Success := CreatePipe(FStdInRead, FStdInWrite, @Security, 0);
+  if not Success then
+  begin
+    OutputDebugString('TCopilotLSPClient.StartNodeProcess: Failed to create stdin pipe');
     raise Exception.Create('Failed to create stdin pipe');
-  if not CreatePipe(FStdOutRead, FStdOutWrite, @Security, 0) then
-    raise Exception.Create('Failed to create stdout pipe');
+  end;
+  OutputDebugString('TCopilotLSPClient.StartNodeProcess: stdin pipe created');
 
-  // Use the directory of the extension DLL, not the RAD Studio bin
+  OutputDebugString('TCopilotLSPClient.StartNodeProcess: Creating stdout pipe');
+  Success := CreatePipe(FStdOutRead, FStdOutWrite, @Security, 0);
+  if not Success then
+  begin
+    OutputDebugString('TCopilotLSPClient.StartNodeProcess: Failed to create stdout pipe');
+    raise Exception.Create('Failed to create stdout pipe');
+  end;
+  OutputDebugString('TCopilotLSPClient.StartNodeProcess: stdout pipe created');
+
   ExtensionDir := ExtractFilePath(GetModuleName(HInstance));
   NodePath := 'node';
   ScriptPath := ExtensionDir + 'copilot-language-server.js';
   CmdLine := Format('"%s" "%s"', [NodePath, ScriptPath]);
-  OutputDebugString(PChar('CopilotLSPClient.StartNodeProcess: CmdLine = ' + CmdLine));
+  OutputDebugString(PChar('TCopilotLSPClient.StartNodeProcess: CmdLine = ' + CmdLine));
+  OutputDebugString(PChar('TCopilotLSPClient.StartNodeProcess: ExtensionDir = ' + ExtensionDir));
+  OutputDebugString(PChar('TCopilotLSPClient.StartNodeProcess: ScriptPath = ' + ScriptPath));
 
   ZeroMemory(@StartupInfo, SizeOf(StartupInfo));
   StartupInfo.cb := SizeOf(StartupInfo);
@@ -110,12 +130,14 @@ begin
   StartupInfo.hStdError := FStdOutWrite;
 
   ZeroMemory(@ProcessInfo, SizeOf(ProcessInfo));
-  if not CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NO_WINDOW, nil, nil, StartupInfo, ProcessInfo) then
+  Success := CreateProcess(nil, PChar(CmdLine), nil, nil, True, CREATE_NO_WINDOW, nil, nil, StartupInfo, ProcessInfo);
+  if not Success then
   begin
-    OutputDebugString(PChar('CopilotLSPClient.StartNodeProcess: Failed to start process.'));
+    OutputDebugString(PChar('TCopilotLSPClient.StartNodeProcess: Failed to start process.'));
+    OutputDebugString(PChar('TCopilotLSPClient.StartNodeProcess: GetLastError = ' + IntToStr(GetLastError())));
     raise Exception.Create('Failed to start copilot-language-server.js process: ' + CmdLine);
   end;
-
+  OutputDebugString(PChar('TCopilotLSPClient.StartNodeProcess: Node.js process started, PID = ' + IntToStr(ProcessInfo.dwProcessId)));
   FProcessHandle := ProcessInfo.hProcess;
 end;
 

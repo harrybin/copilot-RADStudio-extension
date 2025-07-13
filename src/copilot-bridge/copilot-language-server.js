@@ -1,4 +1,26 @@
 // Entrypoint for Copilot Language Server (Node.js)
+// --- Logging Setup ---
+const fs = require("fs");
+const path = require("path");
+const LOG_PATH = path.join(__dirname, "copilot-lsp-server.log");
+function log(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try {
+    fs.appendFileSync(LOG_PATH, line, { encoding: "utf8" });
+  } catch (e) {
+    /* ignore */
+  }
+}
+log("Node.js Copilot LSP server starting");
+process.on("exit", (code) => {
+  log("Node.js Copilot LSP server exiting, code=" + code);
+});
+process.on("uncaughtException", (err) => {
+  log("Uncaught exception: " + err.stack);
+});
+process.stdin.on("data", (chunk) => {
+  log("Received from stdin: " + chunk.toString("utf8").trim());
+});
 // This file should be shipped with the extension DLL and started by the RAD Studio extension
 
 function ensureCopilotLanguageServer() {

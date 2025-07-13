@@ -11,10 +11,11 @@ unit CopilotExtension.IBridgeImpl;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.JSON, System.Net.HttpClient,
-  System.Net.URLClient, System.SyncObjs, System.Threading, System.Generics.Collections,
+  System.SysUtils, System.Classes, System.JSON,
+  System.SyncObjs, System.Threading, System.Generics.Collections,
   System.IOUtils, Winapi.Windows, Vcl.Controls,
-  CopilotExtension.IBridge, CopilotExtension.IToolsAPI;
+  CopilotExtension.IBridge, CopilotExtension.IToolsAPI,
+  CopilotExtension.LSPClient;
 
 type
   // Logging levels
@@ -48,7 +49,7 @@ type
   TCopilotChatSession = class(TInterfacedObject, ICopilotChatSession)
   private
     FSessionId: string;
-    FHttpClient: THTTPClient;
+    FLSPClient: TCopilotLSPClient;
     FAuthService: TCopilotAuthenticationService;
     FMessages: TList<TCopilotChatMessage>;
     FAPIEndpoint: string;
@@ -57,7 +58,6 @@ type
     
     function BuildAPIRequest(const Message: string; const Context: TCopilotCodeContext): TJSONObject;
     function ParseAPIResponse(const Response: string): TCopilotResponse;
-    function SendHTTPRequest(const RequestBody: TJSONObject): string;
   public
     constructor Create(const AuthService: TCopilotAuthenticationService; 
       const APIEndpoint: string; RequestTimeout: Integer);
@@ -77,7 +77,6 @@ type
   private
     FInitialized: Boolean;
     FAuthService: TCopilotAuthenticationService;
-    FHttpClient: THTTPClient;
     FConfiguration: TJSONObject;
     FLastError: string;
     FAPIEndpoint: string;
@@ -251,7 +250,6 @@ constructor TCopilotChatSession.Create(const AuthService: TCopilotAuthentication
 begin
   LogDebug('TCopilotChatSession.Create: Starting constructor');
   inherited Create;
-  
   try
     LogDebug('TCopilotChatSession.Create: Setting basic properties');
     FAuthService := AuthService;
@@ -259,22 +257,11 @@ begin
     FRequestTimeout := RequestTimeout;
     FSessionId := TGUID.NewGuid.ToString;
     LogDebug('TCopilotChatSession.Create: SessionId = ' + FSessionId);
-    
     LogDebug('TCopilotChatSession.Create: Creating collections');
     FMessages := TList<TCopilotChatMessage>.Create;
     FLock := TCriticalSection.Create;
-    
-    LogDebug('TCopilotChatSession.Create: Creating HTTP client');
-    // Initialize HTTP client
-    FHttpClient := THTTPClient.Create;
-    FHttpClient.SendTimeout := FRequestTimeout;
-    
-    LogDebug('TCopilotChatSession.Create: Setting up request headers');
-    // Set up request headers
-    FHttpClient.CustomHeaders['Accept'] := 'text/event-stream';
-    FHttpClient.CustomHeaders['Content-Type'] := 'application/json';
-    FHttpClient.CustomHeaders['User-Agent'] := 'RADStudio-Copilot-Extension/1.0';
-    
+    LogDebug('TCopilotChatSession.Create: Creating LSP client');
+    FLSPClient := TCopilotLSPClient.Create;
     LogDebug('TCopilotChatSession.Create: Constructor completed successfully');
   except
     on E: Exception do
@@ -288,15 +275,13 @@ end;
 destructor TCopilotChatSession.Destroy;
 begin
   LogDebug('TCopilotChatSession.Destroy: Starting destructor');
-  
   try
-    LogDebug('TCopilotChatSession.Destroy: Freeing FHttpClient');
-    FreeAndNil(FHttpClient);
+    LogDebug('TCopilotChatSession.Destroy: Freeing FLSPClient');
+    FreeAndNil(FLSPClient);
   except
     on E: Exception do
-      LogError('TCopilotChatSession.Destroy: Error freeing FHttpClient: ' + E.Message);
+      LogError('TCopilotChatSession.Destroy: Error freeing FLSPClient: ' + E.Message);
   end;
-  
   try
     LogDebug('TCopilotChatSession.Destroy: Freeing FMessages');
     FreeAndNil(FMessages);
@@ -304,7 +289,6 @@ begin
     on E: Exception do
       LogError('TCopilotChatSession.Destroy: Error freeing FMessages: ' + E.Message);
   end;
-  
   try
     LogDebug('TCopilotChatSession.Destroy: Freeing FLock');
     FreeAndNil(FLock);
@@ -312,7 +296,6 @@ begin
     on E: Exception do
       LogError('TCopilotChatSession.Destroy: Error freeing FLock: ' + E.Message);
   end;
-  
   LogDebug('TCopilotChatSession.Destroy: Calling inherited destructor');
   inherited;
   LogDebug('TCopilotChatSession.Destroy: Destructor completed');
@@ -528,45 +511,6 @@ begin
   end;
 end;
 
-function TCopilotChatSession.SendHTTPRequest(const RequestBody: TJSONObject): string;
-var
-  Response: IHTTPResponse;
-  RequestStream: TStringStream;
-  Token: string;
-begin
-  if not FAuthService.IsAuthenticated then
-  begin
-    raise Exception.Create('Not authenticated with GitHub Copilot');
-  end;
-  
-  Token := FAuthService.GetToken;
-  if Token = '' then
-  begin
-    raise Exception.Create('No access token available');
-  end;
-  
-  // Set authorization header
-  FHttpClient.CustomHeaders['Authorization'] := 'Bearer ' + Token;
-  
-  RequestStream := TStringStream.Create(RequestBody.ToString, TEncoding.UTF8);
-  try
-    Response := FHttpClient.Post(FAPIEndpoint, RequestStream);
-    
-    if Response.StatusCode = 200 then
-    begin
-      Result := Response.ContentAsString;
-    end
-    else
-    begin
-      raise Exception.CreateFmt('HTTP request failed with status %d: %s', 
-        [Response.StatusCode, Response.StatusText]);
-    end;
-    
-  finally
-    RequestStream.Free;
-  end;
-end;
-
 function TCopilotChatSession.SendMessage(const Message: string; 
   const Context: TCopilotCodeContext): TCopilotResponse;
 var
@@ -577,7 +521,6 @@ begin
   LogDebug('SendMessage: Starting with message: ' + Copy(Message, 1, 50) + '...');
   FillChar(Result, SizeOf(Result), 0);
   Result.Status := crsError;
-  
   try
     LogDebug('SendMessage: Building API request');
     // Build API request
@@ -588,12 +531,11 @@ begin
       Result.ErrorMessage := 'Failed to build API request';
       Exit;
     end;
-    
     try
-      LogDebug('SendMessage: Sending HTTP request');
-      // Send HTTP request
-      ResponseContent := SendHTTPRequest(RequestBody);
-      LogDebug('SendMessage: HTTP request completed, response length: ' + IntToStr(Length(ResponseContent)));
+      LogDebug('SendMessage: Sending LSP request');
+      // TODO: Send request via LSP client
+      ResponseContent := '';
+      LogDebug('SendMessage: LSP request completed, response length: ' + IntToStr(Length(ResponseContent)));
       
       LogDebug('SendMessage: Parsing API response');
       // Parse response
@@ -631,7 +573,6 @@ begin
       LogDebug('SendMessage: Freeing request body');
       RequestBody.Free;
     end;
-    
   except
     on E: Exception do
     begin
@@ -792,9 +733,6 @@ begin
   FConfiguration := TJSONObject.Create;
   FLock := TCriticalSection.Create;
   
-  // Initialize HTTP client (not used in local mode, but kept for compatibility)
-  FHttpClient := THTTPClient.Create;
-  FHttpClient.SendTimeout := FRequestTimeout;
   
   // Load configuration immediately so saved credentials are available
   // Note: Logger might not be available yet, so LoadConfiguration will handle that
@@ -809,11 +747,6 @@ begin
     // Ignore finalization errors during destruction
   end;
   
-  try
-    FreeAndNil(FHttpClient);
-  except
-    // Ignore cleanup errors
-  end;
   
   try
     FreeAndNil(FConfiguration);
@@ -1137,9 +1070,6 @@ begin
     LogDebug('SetConfiguration: New username = ' + FConfiguration.GetValue<string>('username', ''));
     LogDebug('SetConfiguration: New token present = ' + BoolToStr(FConfiguration.GetValue<string>('token', '') <> '', True));
     
-    // Update HTTP client timeout
-    if FHttpClient <> nil then
-      FHttpClient.SendTimeout := FRequestTimeout;
       
     // Note: Authentication service will be updated automatically when needed
     // by IsAuthenticated() and CreateChatSession() methods

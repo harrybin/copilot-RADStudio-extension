@@ -457,10 +457,7 @@ begin
     begin
       LogError('BuildAPIRequest: Exception occurred: ' + E.Message);
       if Assigned(Result) then
-      begin
         Result.Free;
-        Result := nil;
-      end;
       raise;
     end;
   end;

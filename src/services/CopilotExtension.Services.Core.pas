@@ -100,8 +100,6 @@ begin
 end;
 
 function TCopilotCoreService.Initialize: Boolean;
-var
-  BridgeFactory: ICopilotBridgeFactory;
 begin
   Result := False;
   

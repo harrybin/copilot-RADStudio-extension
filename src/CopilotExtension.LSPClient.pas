@@ -10,7 +10,6 @@ type
   private
     procedure SendMessage(const Msg: string);
     function WriteToStdin(const Data: string): Boolean;
-    function ReadFromStdout: string;
   public
     constructor Create;
     destructor Destroy; override;
@@ -69,11 +68,6 @@ begin
   Result := True;
 end;
 
-function TCopilotLSPClient.ReadFromStdout: string;
-begin
-  // TODO: Implement reading from stdout pipe
-  Result := '';
-end;
 
 procedure TCopilotLSPClient.Initialize;
 begin

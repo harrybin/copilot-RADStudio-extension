@@ -31,10 +31,12 @@ function ensureCopilotLanguageServer() {
     } = require("@githubnext/copilot-language-server");
     return CopilotLanguageServer;
   } catch (err) {
+    log(
+      'Error in require("@githubnext/copilot-language-server"): ' +
+        (err && err.stack ? err.stack : err)
+    );
     if (err.code === "MODULE_NOT_FOUND") {
-      console.log(
-        "@githubnext/copilot-language-server not found. Installing..."
-      );
+      log("@githubnext/copilot-language-server not found. Installing...");
       const { execSync } = require("child_process");
       try {
         execSync("npm install @githubnext/copilot-language-server", {
@@ -47,14 +49,17 @@ function ensureCopilotLanguageServer() {
         } = require("@githubnext/copilot-language-server");
         return CopilotLanguageServer;
       } catch (installErr) {
-        console.error(
-          "Failed to install @githubnext/copilot-language-server:",
-          installErr
+        log(
+          "Failed to install @githubnext/copilot-language-server: " +
+            (installErr && installErr.stack ? installErr.stack : installErr)
         );
         process.exit(1);
       }
     } else {
-      console.error("Error loading @githubnext/copilot-language-server:", err);
+      log(
+        "Error loading @githubnext/copilot-language-server: " +
+          (err && err.stack ? err.stack : err)
+      );
       process.exit(1);
     }
   }

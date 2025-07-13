@@ -12,7 +12,7 @@ This is a RAD Studio IDE extension that creates an adapter wrapper around the [V
 - **Data Module Pattern**: Use VCL-affinity data modules for OnCreate/OnDestroy lifecycle management
 - **API Interfaces**: Leverage both OTA (Open Tools API) and NTA (Native Tools API) interfaces
 - **Tools API Location**: Interface declarations found at `C:\Program Files (x86)\Embarcadero\Studio\23.0\source\ToolsAPI`
-  - **Tools API** documentation: when needed fetch them here [Tools API Documentation](https://docwiki.embarcadero.com/Libraries/Athens/de/ToolsAPI)
+  - **Tools API** documentation: when needed fetch them here [Tools API Documentation](https://docwiki.embarcadero.com/Libraries/Athens/en/ToolsAPI)
 
 ## VS Code Copilot Chat Adapter
 

@@ -162,7 +162,8 @@ end;
 // Helper procedures for different log levels
 procedure LogDebug(const Msg: string);
 begin
-  LogToSystem(llDebug, Msg);
+  // Commented out to reduce debug log noise
+  // LogToSystem(llDebug, Msg);
 end;
 
 procedure LogInfo(const Msg: string);
@@ -544,10 +545,9 @@ begin
     end;
     try
       LSPRequest := RequestBody.ToString;
-      LogDebug('SendMessage: Sending LSP request via FLSPClient');
-      // Send request to LSP server via FLSPClient
+      LogInfo('SendMessage: Sending LSP request: ' + LSPRequest);
       LSPResponse := FLSPClient.SendMessage(LSPRequest);
-      LogDebug('SendMessage: LSP request sent, waiting for response');
+      LogInfo('SendMessage: Raw LSP response: ' + LSPResponse);
       Result := ParseAPIResponse(LSPResponse);
       LogInfo('SendMessage: Response status: ' + IntToStr(Ord(Result.Status)));
       if Result.Status = crsSuccess then

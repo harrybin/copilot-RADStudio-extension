@@ -1,11 +1,5 @@
-unit CopilotExtension.Services.Core;
 
-{
-  RAD Studio Copilot Extension - Core Service Implementation
-  
-  This unit provides the core service layer that coordinates between the
-  Tools API, Copilot Bridge, and UI components.
-}
+unit CopilotExtension.Services.Core;
 
 interface
 

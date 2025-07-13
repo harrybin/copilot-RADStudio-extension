@@ -24,7 +24,6 @@ type
     FEditorNotifier: ICopilotEditorNotifier;
     FProjectNotifier: ICopilotProjectNotifier;
     
-    procedure CreateMenuItems;
     procedure DestroyMenuItems;
     function GetNTAServices: INTAServices;
     function GetToolsMenuItem: TMenuItem;
@@ -433,10 +432,6 @@ begin
   end;
 end;
 
-procedure TCopilotToolsAPIManager.CreateMenuItems;
-begin
-  // Menu items are created dynamically in RegisterMenuItems
-end;
 
 procedure TCopilotToolsAPIManager.DestroyMenuItems;
 begin

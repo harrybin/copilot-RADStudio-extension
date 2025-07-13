@@ -235,7 +235,6 @@ end;
 
 function TCopilotChatPanel.GetCurrentCodeContext: string;
 var
-  ToolsAPIManager: TCopilotToolsAPIManager;
   CodeContext: TCopilotCodeContext;
 begin
   Result := '';

@@ -1345,6 +1345,7 @@ var
   NewConfig: TJSONObject;
   Config: TJSONObject;
 begin
+    NewConfig := nil;
   LogDebug('ShowSettingsDialog: Starting');
   
   try

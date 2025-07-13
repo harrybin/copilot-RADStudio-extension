@@ -8,7 +8,11 @@ uses
 type
   TCopilotLSPClient = class(TObject)
   private
+    FProcessHandle: THandle;
+    FStdInWrite: THandle;
+    FStdOutRead: THandle;
     function WriteToStdin(const Data: string): Boolean;
+    function ReadFromStdout: string;
   public
     constructor Create;
     destructor Destroy; override;
@@ -17,10 +21,61 @@ type
     procedure DidOpenDocument(const Uri, LanguageId, Text: string);
     procedure DidChangeDocument(const Uri, Text: string);
     procedure DidCloseDocument(const Uri: string);
-    procedure SendMessage(const Msg: string);
+    function SendMessage(const Msg: string): string;
   end;
 
 implementation
+constructor TCopilotLSPClient.Create;
+begin
+  inherited Create;
+end;
+
+destructor TCopilotLSPClient.Destroy;
+begin
+  inherited Destroy;
+end;
+
+procedure TCopilotLSPClient.Initialize;
+begin
+  // Initialization logic here
+end;
+
+procedure TCopilotLSPClient.Shutdown;
+begin
+  // Cleanup logic here
+end;
+
+function TCopilotLSPClient.WriteToStdin(const Data: string): Boolean;
+var
+  BytesWritten: DWORD;
+begin
+  Result := False;
+  if FStdInWrite = 0 then Exit;
+  if not WriteFile(FStdInWrite, PAnsiChar(AnsiString(Data))^, Length(Data), BytesWritten, nil) then
+    Exit;
+  Result := BytesWritten = Length(Data);
+end;
+
+function TCopilotLSPClient.ReadFromStdout: string;
+var
+  Buffer: array[0..4095] of AnsiChar;
+  BytesRead: DWORD;
+  S: string;
+begin
+  Result := '';
+  if FStdOutRead = 0 then Exit;
+  S := '';
+  if ReadFile(FStdOutRead, Buffer, SizeOf(Buffer), BytesRead, nil) and (BytesRead > 0) then
+    SetString(S, Buffer, BytesRead);
+  Result := Trim(S);
+end;
+
+function TCopilotLSPClient.SendMessage(const Msg: string): string;
+begin
+  if not WriteToStdin(Msg + #10) then
+    Exit('');
+  Result := ReadFromStdout;
+end;
 
 procedure TCopilotLSPClient.DidOpenDocument(const Uri, LanguageId, Text: string);
 var
@@ -46,20 +101,10 @@ begin
   SendMessage(Msg);
 end;
 
-constructor TCopilotLSPClient.Create;
-begin
-  inherited Create;
-end;
-
-destructor TCopilotLSPClient.Destroy;
-begin
-  inherited Destroy;
-end;
-
-procedure TCopilotLSPClient.SendMessage(const Msg: string);
-begin
-  // Basic stub: send JSON-RPC message to copilot-language-server
-  WriteToStdin(Msg);
+end.
+  if not WriteToStdin(Msg + #10) then
+    Exit('');
+  Result := ReadFromStdout;
 end;
 
 function TCopilotLSPClient.WriteToStdin(const Data: string): Boolean;

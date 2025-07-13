@@ -546,11 +546,8 @@ begin
       LSPRequest := RequestBody.ToString;
       LogDebug('SendMessage: Sending LSP request via FLSPClient');
       // Send request to LSP server via FLSPClient
-      FLSPClient.SendMessage(LSPRequest);
-      // TODO: Implement synchronous response handling from LSP server
-      LSPResponse := '';
+      LSPResponse := FLSPClient.SendMessage(LSPRequest);
       LogDebug('SendMessage: LSP request sent, waiting for response');
-      // For now, simulate response (integration required)
       Result := ParseAPIResponse(LSPResponse);
       LogInfo('SendMessage: Response status: ' + IntToStr(Ord(Result.Status)));
       if Result.Status = crsSuccess then
